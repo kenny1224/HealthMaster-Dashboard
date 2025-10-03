@@ -68,7 +68,7 @@ class RankingEngine:
     def calculate_rankings(self):
         """計算男女分組排名"""
         # 女性組
-        female_data = self.df[self.df['性別'] == '生理女'].copy()
+        female_data = self.df[self.df['性別'] == '女'].copy()
         female_data = female_data.sort_values('total', ascending=False).reset_index(drop=True)
         female_data['排名'] = range(1, len(female_data) + 1)
         
@@ -80,7 +80,7 @@ class RankingEngine:
         self.female_df = female_data
         
         # 男性組
-        male_data = self.df[self.df['性別'] == '生理男'].copy()
+        male_data = self.df[self.df['性別'] == '男'].copy()
         male_data = male_data.sort_values('total', ascending=False).reset_index(drop=True)
         male_data['排名'] = range(1, len(male_data) + 1)
         

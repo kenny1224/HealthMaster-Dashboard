@@ -13,7 +13,7 @@ from ranking_engine import RankingEngine
 # 頁面設定
 st.set_page_config(
     page_title="健康達人積分賽",
-    page_icon="🏥",
+    page_icon="🏃‍♂️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -58,7 +58,7 @@ def get_data_loader():
 
 def display_header():
     """顯示頁首"""
-    st.markdown('<div class="main-header">🏥 健康達人積分賽</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🏃‍♂️ 健康達人積分賽</div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
@@ -347,8 +347,64 @@ def display_personal_query_tab(ranking_engine):
                 for activity in activities:
                     st.markdown(f"- {activity}")
             
+            # 完整個人資料表
+            st.markdown("### 📋 完整個人資料")
+            
+            # 過濾掉系統生成的欄位，只顯示原始資料
+            exclude_columns = ['排名', '獎金', '獎牌', '顏色']
+            display_data = {}
+            
+            for col in person_data.index:
+                if col not in exclude_columns and pd.notna(person_data[col]):
+                    display_data[col] = person_data[col]
+            
+            # 以表格形式顯示
+            if display_data:
+                data_df = pd.DataFrame([display_data]).T
+                data_df.columns = ['數值']
+                data_df.index.name = '項目'
+                
+                st.dataframe(
+                    data_df,
+                    use_container_width=True,
+                    height=400
+                )
+                
+                # 下載個人資料
+                csv_data = data_df.to_csv(encoding='utf-8-sig')
+                st.download_button(
+                    label="📥 下載個人完整資料",
+                    data=csv_data,
+                    file_name=f"{selected_name}_個人資料.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            
         else:
             st.error(f"找不到 {selected_name} 的資料")
+
+
+def display_activity_intro_tab():
+    """顯示活動簡介頁"""
+    st.subheader("📝 活動簡介")
+    
+    try:
+        # 讀取活動簡介檔案
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+        intro_path = os.path.join(project_root, '活動簡介.txt')
+        
+        with open(intro_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 顯示內容
+        st.markdown(content)
+        
+    except FileNotFoundError:
+        st.error("❌ 找不到活動簡介檔案")
+    except Exception as e:
+        st.error(f"❌ 讀取活動簡介時發生錯誤：{str(e)}")
 
 
 def display_statistics_tab(df):
@@ -364,7 +420,7 @@ def display_statistics_tab(df):
         color='性別',
         title='男女組分數分布對比',
         labels={'total': '總分', '性別': '性別組別'},
-        color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
+        color_discrete_map={'女': '#FF69B4', '男': '#4169E1'}
     )
     st.plotly_chart(fig1, use_container_width=True)
     
@@ -380,7 +436,7 @@ def display_statistics_tab(df):
             color='性別',
             barmode='group',
             title='各部門男女參與人數',
-            color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
+            color_discrete_map={'女': '#FF69B4', '男': '#4169E1'}
         )
         fig2.update_xaxes(tickangle=45)
         st.plotly_chart(fig2, use_container_width=True)
@@ -399,7 +455,7 @@ def display_statistics_tab(df):
         y='人數',
         color='性別',
         title='分數分段分布',
-        color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
+        color_discrete_map={'女': '#FF69B4', '男': '#4169E1'}
     )
     st.plotly_chart(fig3, use_container_width=True)
 
@@ -442,12 +498,13 @@ def main():
     female_top, male_top = ranking_engine.get_top_n(10)
     
     # 選項卡
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📊 總覽",
         "🌸 女性組完整排名",
         "💪 男性組完整排名",
         "🔍 個人查詢",
-        "📈 統計圖表"
+        "📈 統計圖表",
+        "📝 活動簡介"
     ])
     
     with tab1:
@@ -464,6 +521,9 @@ def main():
     
     with tab5:
         display_statistics_tab(df)
+    
+    with tab6:
+        display_activity_intro_tab()
     
     # 頁尾
     st.markdown("---")

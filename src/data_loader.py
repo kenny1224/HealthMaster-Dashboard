@@ -6,6 +6,7 @@
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+import pytz
 import os
 
 
@@ -67,7 +68,7 @@ class DataLoader:
             return False, errors
         
         # 檢查性別欄位（只是警告，會自動清理）
-        valid_genders = ['生理女', '生理男']
+        valid_genders = ['女', '男']
         if '性別' in df.columns:
             invalid_gender = df[~df['性別'].isin(valid_genders) & df['性別'].notna()]
             if len(invalid_gender) > 0:
@@ -109,11 +110,14 @@ class DataLoader:
         return df
     
     def get_last_update_time(self):
-        """獲取檔案最後更新時間"""
+        """獲取檔案最後更新時間（台灣時區）"""
         try:
             if os.path.exists(self.file_path):
                 timestamp = os.path.getmtime(self.file_path)
-                return datetime.fromtimestamp(timestamp)
+                # 轉換為台灣時區
+                taipei_tz = pytz.timezone('Asia/Taipei')
+                utc_time = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
+                return utc_time.astimezone(taipei_tz)
             return None
         except Exception:
             return None
@@ -159,8 +163,8 @@ class DataLoader:
         """獲取統計資訊"""
         stats = {
             'total_participants': len(df),
-            'female_count': len(df[df['性別'] == '生理女']),
-            'male_count': len(df[df['性別'] == '生理男']),
+            'female_count': len(df[df['性別'] == '女']),
+            'male_count': len(df[df['性別'] == '男']),
             'avg_score': df['total'].mean(),
             'max_score': df['total'].max(),
             'min_score': df['total'].min(),
@@ -171,11 +175,21 @@ class DataLoader:
             completed = df['體脂是否上傳'].isin(['已完成', '✅', '是']).sum()
             stats['body_fat_completion_rate'] = completed / len(df) if len(df) > 0 else 0
         
-        # 運動和飲食統計
-        score_details = self.extract_score_details(df)
-        if '運動分' in score_details:
-            stats['total_exercise_records'] = int(score_details['運動分'].sum())
-        if '飲食分' in score_details:
-            stats['total_diet_records'] = int(score_details['飲食分'].sum())
+        # 運動和飲食統計（計算有記錄的人次）
+        exercise_cols = [col for col in df.columns if '運動' in col or '日常' in col]
+        if exercise_cols:
+            # 計算有運動記錄的總人次（每個人每個欄位算一次）
+            exercise_records = 0
+            for col in exercise_cols:
+                exercise_records += (df[col].fillna(0) > 0).sum()
+            stats['total_exercise_records'] = exercise_records
+        
+        diet_cols = [col for col in df.columns if '飲食' in col]
+        if diet_cols:
+            # 計算有飲食記錄的總人次
+            diet_records = 0
+            for col in diet_cols:
+                diet_records += (df[col].fillna(0) > 0).sum()
+            stats['total_diet_records'] = diet_records
         
         return stats
