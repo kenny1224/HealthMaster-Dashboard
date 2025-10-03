@@ -69,7 +69,7 @@ def display_header():
         if update_time:
             st.markdown(f"**🕐 最後更新：** {update_time.strftime('%Y/%m/%d %H:%M')}")
     with col3:
-        if st.button("🔄 重新載入", use_container_width=True):
+        if st.button("🔄 重新載入", width='stretch'):
             st.cache_data.clear()
             st.rerun()
 
@@ -126,7 +126,7 @@ def display_overview_tab(female_top, male_top):
             st.dataframe(
                 display_df,
                 hide_index=True,
-                use_container_width=True,
+                width='stretch',
                 height=400
             )
             
@@ -146,7 +146,7 @@ def display_overview_tab(female_top, male_top):
             st.dataframe(
                 display_df,
                 hide_index=True,
-                use_container_width=True,
+                width='stretch',
                 height=400
             )
             
@@ -188,7 +188,7 @@ def display_full_ranking_tab(df, gender_label, emoji):
             data=csv,
             file_name=f"{gender_label}_排名表.csv",
             mime="text/csv",
-            use_container_width=True
+            width='stretch'
         )
     
     # 篩選資料
@@ -211,7 +211,7 @@ def display_full_ranking_tab(df, gender_label, emoji):
         st.dataframe(
             display_df,
             hide_index=True,
-            use_container_width=True,
+            width='stretch',
             height=600
         )
         
@@ -261,7 +261,7 @@ def display_personal_query_tab(ranking_engine):
         )
     
     with col2:
-        search_button = st.button("🔍 查詢", use_container_width=True, type="primary")
+        search_button = st.button("🔍 查詢", width='stretch', type="primary")
     
     if search_button and selected_name != '請選擇...':
         person_data, group, total_in_group = ranking_engine.get_person_info(selected_name)
@@ -366,7 +366,7 @@ def display_statistics_tab(df):
         labels={'total': '總分', '性別': '性別組別'},
         color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
     )
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, width='stretch')
     
     # 部門參與度
     if '所屬部門' in df.columns:
@@ -383,7 +383,7 @@ def display_statistics_tab(df):
             color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
         )
         fig2.update_xaxes(tickangle=45)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width='stretch')
     
     # 分數分段統計
     st.markdown("### 分數分段統計")
@@ -401,7 +401,7 @@ def display_statistics_tab(df):
         title='分數分段分布',
         color_discrete_map={'生理女': '#FF69B4', '生理男': '#4169E1'}
     )
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width='stretch')
 
 
 def main():
