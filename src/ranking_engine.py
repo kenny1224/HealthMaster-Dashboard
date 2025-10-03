@@ -10,7 +10,8 @@ import streamlit as st
 class RankingEngine:
     """排名計算引擎"""
     
-    PRIZE_CONFIG = {
+    # 男子組獎金結構
+    MALE_PRIZE_CONFIG = {
         1: ('NT$6,000', '🥇', '#FFD700'),      # 金色
         2: ('NT$3,000', '🥈', '#C0C0C0'),      # 銀色
         3: ('NT$3,000', '🥈', '#C0C0C0'),
@@ -27,6 +28,38 @@ class RankingEngine:
         14: ('NT$1,000', '🏅', '#50C878'),
     }
     
+    # 女子組獎金結構（新增）
+    FEMALE_PRIZE_CONFIG = {
+        1: ('NT$6,000', '🥇', '#FFD700'),      # 第1-2名
+        2: ('NT$6,000', '🥇', '#FFD700'),
+        3: ('NT$3,000', '🥈', '#C0C0C0'),      # 第3-8名
+        4: ('NT$3,000', '🥈', '#C0C0C0'),
+        5: ('NT$3,000', '🥈', '#C0C0C0'),
+        6: ('NT$3,000', '🥈', '#C0C0C0'),
+        7: ('NT$3,000', '🥈', '#C0C0C0'),
+        8: ('NT$3,000', '🥈', '#C0C0C0'),
+        9: ('NT$2,000', '🥉', '#CD7F32'),      # 第9-18名
+        10: ('NT$2,000', '🥉', '#CD7F32'),
+        11: ('NT$2,000', '🥉', '#CD7F32'),
+        12: ('NT$2,000', '🥉', '#CD7F32'),
+        13: ('NT$2,000', '🥉', '#CD7F32'),
+        14: ('NT$2,000', '🥉', '#CD7F32'),
+        15: ('NT$2,000', '🥉', '#CD7F32'),
+        16: ('NT$2,000', '🥉', '#CD7F32'),
+        17: ('NT$2,000', '🥉', '#CD7F32'),
+        18: ('NT$2,000', '🥉', '#CD7F32'),
+        19: ('NT$1,000', '🏅', '#50C878'),     # 第19-28名
+        20: ('NT$1,000', '🏅', '#50C878'),
+        21: ('NT$1,000', '🏅', '#50C878'),
+        22: ('NT$1,000', '🏅', '#50C878'),
+        23: ('NT$1,000', '🏅', '#50C878'),
+        24: ('NT$1,000', '🏅', '#50C878'),
+        25: ('NT$1,000', '🏅', '#50C878'),
+        26: ('NT$1,000', '🏅', '#50C878'),
+        27: ('NT$1,000', '🏅', '#50C878'),
+        28: ('NT$1,000', '🏅', '#50C878'),
+    }
+    
     def __init__(self, df):
         self.df = df
         self.female_df = None
@@ -39,9 +72,9 @@ class RankingEngine:
         female_data = female_data.sort_values('total', ascending=False).reset_index(drop=True)
         female_data['排名'] = range(1, len(female_data) + 1)
         
-        # 添加獎金資訊
+        # 添加獎金資訊（使用女性組配置）
         female_data[['獎金', '獎牌', '顏色']] = female_data['排名'].apply(
-            lambda x: pd.Series(self.get_prize_info(x))
+            lambda x: pd.Series(self.get_prize_info(x, 'female'))
         )
         
         self.female_df = female_data
@@ -51,9 +84,9 @@ class RankingEngine:
         male_data = male_data.sort_values('total', ascending=False).reset_index(drop=True)
         male_data['排名'] = range(1, len(male_data) + 1)
         
-        # 添加獎金資訊
+        # 添加獎金資訊（使用男性組配置）
         male_data[['獎金', '獎牌', '顏色']] = male_data['排名'].apply(
-            lambda x: pd.Series(self.get_prize_info(x))
+            lambda x: pd.Series(self.get_prize_info(x, 'male'))
         )
         
         self.male_df = male_data
@@ -61,10 +94,15 @@ class RankingEngine:
         return self.female_df, self.male_df
     
     @staticmethod
-    def get_prize_info(rank):
-        """根據排名獲取獎金資訊"""
-        if rank in RankingEngine.PRIZE_CONFIG:
-            return RankingEngine.PRIZE_CONFIG[rank]
+    def get_prize_info(rank, gender='male'):
+        """根據排名和性別獲取獎金資訊"""
+        if gender == 'female':
+            config = RankingEngine.FEMALE_PRIZE_CONFIG
+        else:
+            config = RankingEngine.MALE_PRIZE_CONFIG
+            
+        if rank in config:
+            return config[rank]
         else:
             return ('-', '', '#FFFFFF')
     
@@ -113,17 +151,18 @@ class RankingEngine:
         return dept_stats
     
     def get_prize_winners(self):
-        """獲取所有得獎者（前14名）"""
-        female_winners = self.female_df.head(14) if self.female_df is not None else pd.DataFrame()
+        """獲取所有得獎者（男子組前14名，女子組前28名）"""
+        female_winners = self.female_df.head(28) if self.female_df is not None else pd.DataFrame()
         male_winners = self.male_df.head(14) if self.male_df is not None else pd.DataFrame()
         
         return female_winners, male_winners
     
     @staticmethod
-    def style_ranking_table(df):
+    def style_ranking_table(df, gender='male'):
         """表格樣式化（高亮獎金得主）"""
         def highlight_winners(row):
-            if row['排名'] <= 14:
+            max_prize_rank = 28 if gender == 'female' else 14
+            if row['排名'] <= max_prize_rank:
                 return ['background-color: #fff9e6; font-weight: bold'] * len(row)
             return [''] * len(row)
         

@@ -226,13 +226,17 @@ def display_full_ranking_tab(df, gender_label, emoji):
         with col3:
             st.metric("最高分", f"{filtered_df['total'].max():.0f} 分")
         with col4:
-            if len(df) >= 14:
-                cutoff = df.iloc[13]['total']
-                st.metric("前14名分數線", f"{cutoff:.0f} 分")
+            max_prize_rank = 28 if gender_label == '女性組' else 14
+            prize_line_name = f"前{max_prize_rank}名分數線"
+            
+            if len(df) >= max_prize_rank:
+                cutoff = df.iloc[max_prize_rank-1]['total']
+                st.metric(prize_line_name, f"{cutoff:.0f} 分")
             else:
-                st.metric("前14名分數線", "N/A")
+                st.metric(prize_line_name, "N/A")
         
-        st.info("💡 前 14 名可獲得獎金！繼續加油 💪")
+        prize_info = f"前 {max_prize_rank} 名" if gender_label == '女性組' else "前 14 名"
+        st.info(f"💡 {prize_info}可獲得獎金！繼續加油 💪")
     else:
         st.warning("沒有符合條件的資料")
 
@@ -284,7 +288,10 @@ def display_personal_query_tab(ranking_engine):
                 """)
             
             # 獎金資訊
-            if person_data['排名'] <= 14:
+            max_prize_rank = 28 if group == '女性組' else 14
+            prize_line_name = "第28名" if group == '女性組' else "第14名"
+            
+            if person_data['排名'] <= max_prize_rank:
                 st.success(f"🎉 恭喜！您目前排名第 {person_data['排名']} 名，可獲得獎金 **{person_data['獎金']}** {person_data['獎牌']}")
                 
                 # 計算與前一名的差距
@@ -293,12 +300,12 @@ def display_personal_query_tab(ranking_engine):
                     diff = ranking_engine.get_rank_difference(person_data, group_df)
                     st.info(f"💪 距離第 {person_data['排名']-1} 名還差 **{diff:.0f}** 分，加油！")
             else:
-                # 計算距離第14名的差距
+                # 計算距離獎金線的差距
                 group_df = ranking_engine.female_df if group == '女性組' else ranking_engine.male_df
-                if len(group_df) >= 14:
-                    rank_14_score = group_df.iloc[13]['total']
-                    diff = rank_14_score - person_data['total']
-                    st.warning(f"距離獎金線（第14名）還差 **{diff:.0f}** 分，繼續努力！💪")
+                if len(group_df) >= max_prize_rank:
+                    prize_line_score = group_df.iloc[max_prize_rank-1]['total']
+                    diff = prize_line_score - person_data['total']
+                    st.warning(f"距離獎金線（{prize_line_name}）還差 **{diff:.0f}** 分，繼續努力！💪")
             
             # 分數明細
             st.markdown("### 📈 分數明細")

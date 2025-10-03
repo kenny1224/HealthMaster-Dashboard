@@ -12,7 +12,7 @@ import os
 class DataLoader:
     """資料載入器"""
     
-    def __init__(self, file_path='data/20250903分數累積表.xlsx'):
+    def __init__(self, file_path='data/20250905分數累積表(0831-0920) - F.xlsx'):
         # 取得專案根目錄（src 的上一層）
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_dir)
