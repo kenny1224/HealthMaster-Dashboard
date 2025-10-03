@@ -68,7 +68,7 @@ class DataLoader:
             return False, errors
         
         # 檢查性別欄位（只是警告，會自動清理）
-        valid_genders = ['女', '男']
+        valid_genders = ['女', '男', '生理女', '生理男']  # 支援原始和轉換後的格式
         if '性別' in df.columns:
             invalid_gender = df[~df['性別'].isin(valid_genders) & df['性別'].notna()]
             if len(invalid_gender) > 0:
@@ -106,6 +106,8 @@ class DataLoader:
         # 移除性別為空的資料
         if '性別' in df.columns:
             df = df[df['性別'].notna()]
+            # 統一性別標示：生理女→女，生理男→男
+            df['性別'] = df['性別'].replace({'生理女': '女', '生理男': '男'})
         
         return df
     
