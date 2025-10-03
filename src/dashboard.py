@@ -347,38 +347,68 @@ def display_personal_query_tab(ranking_engine):
                 for activity in activities:
                     st.markdown(f"- {activity}")
             
-            # 完整個人資料表
-            st.markdown("### 📋 完整個人資料")
+            # 活動參與記錄
+            st.markdown("### 🏃‍♂️ 活動參與記錄")
             
-            # 過濾掉系統生成的欄位，只顯示原始資料
-            exclude_columns = ['排名', '獎金', '獎牌', '顏色']
-            display_data = {}
+            # 提取活動記錄（排除基本資訊欄位）
+            exclude_columns = ['排名', '獎金', '獎牌', '顏色', '姓名', '性別', '所屬部門', 
+                             '員工編號', '分公司代碼', '部門', '電子信箱', 'total']
+            
+            # 分類顯示活動記錄
+            activity_records = {}
             
             for col in person_data.index:
-                if col not in exclude_columns and pd.notna(person_data[col]):
-                    display_data[col] = person_data[col]
+                if col not in exclude_columns and pd.notna(person_data[col]) and person_data[col] != 0:
+                    # 根據欄位名稱分類
+                    if '期間1' in col:
+                        category = "📅 第一期間活動"
+                    elif '期間2' in col:
+                        category = "📅 第二期間活動"
+                    elif 'total_期間' in col:
+                        category = "📊 各期間總分"
+                    else:
+                        category = "📝 其他記錄"
+                    
+                    if category not in activity_records:
+                        activity_records[category] = []
+                    
+                    # 清理欄位名稱（移除期間標示）
+                    clean_name = col.replace('_期間1', '').replace('_期間2', '')
+                    activity_records[category].append((clean_name, person_data[col]))
             
-            # 以表格形式顯示
-            if display_data:
-                data_df = pd.DataFrame([display_data]).T
-                data_df.columns = ['數值']
-                data_df.index.name = '項目'
+            # 顯示分類的活動記錄
+            if activity_records:
+                for category, records in activity_records.items():
+                    st.markdown(f"#### {category}")
+                    
+                    # 建立該類別的資料框
+                    if records:
+                        records_df = pd.DataFrame(records, columns=['活動項目', '分數/狀態'])
+                        st.dataframe(
+                            records_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                    st.markdown("---")
                 
-                st.dataframe(
-                    data_df,
-                    use_container_width=True,
-                    height=400
-                )
+                # 下載活動記錄
+                all_records = []
+                for category, records in activity_records.items():
+                    for activity, score in records:
+                        all_records.append([category, activity, score])
                 
-                # 下載個人資料
-                csv_data = data_df.to_csv(encoding='utf-8-sig')
-                st.download_button(
-                    label="📥 下載個人完整資料",
-                    data=csv_data,
-                    file_name=f"{selected_name}_個人資料.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                if all_records:
+                    download_df = pd.DataFrame(all_records, columns=['類別', '活動項目', '分數/狀態'])
+                    csv_data = download_df.to_csv(index=False, encoding='utf-8-sig')
+                    st.download_button(
+                        label="📥 下載活動記錄",
+                        data=csv_data,
+                        file_name=f"{selected_name}_活動記錄.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+            else:
+                st.info("暫無活動參與記錄")
             
         else:
             st.error(f"找不到 {selected_name} 的資料")

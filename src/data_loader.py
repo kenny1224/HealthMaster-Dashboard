@@ -13,39 +13,120 @@ import os
 class DataLoader:
     """資料載入器"""
     
-    def __init__(self, file_path='data/20250905分數累積表(0831-0920) - F.xlsx'):
+    def __init__(self, file_paths=None):
         # 取得專案根目錄（src 的上一層）
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_dir)
         
-        # 如果 file_path 是相對路徑，轉換為絕對路徑
-        if not os.path.isabs(file_path):
-            self.file_path = os.path.join(project_root, file_path)
-        else:
-            self.file_path = file_path
+        # 預設載入兩個期間的檔案
+        if file_paths is None:
+            file_paths = [
+                'data/20250903分數累積表.xlsx',
+                'data/20250905分數累積表(0831-0920) - F.xlsx'
+            ]
+        
+        self.file_paths = []
+        for file_path in file_paths:
+            if not os.path.isabs(file_path):
+                abs_path = os.path.join(project_root, file_path)
+            else:
+                abs_path = file_path
+            self.file_paths.append(abs_path)
         
     @st.cache_data(ttl=300)  # 5分鐘快取
     def load_data(_self):
-        """載入分數累積表"""
+        """載入並合併多個分數累積表"""
         try:
-            df = pd.read_excel(_self.file_path, sheet_name='分數累積')
+            merged_df = None
+            total_files_loaded = 0
             
-            # 自動清理空白行（姓名為空的資料）
-            if '姓名' in df.columns:
-                original_count = len(df)
-                df = df[df['姓名'].notna()].copy()
-                removed_count = original_count - len(df)
-                if removed_count > 0:
-                    # 只在控制台記錄，不顯示給使用者
-                    print(f"已自動清理 {removed_count} 筆空白資料")
+            for i, file_path in enumerate(_self.file_paths):
+                try:
+                    df = pd.read_excel(file_path, sheet_name='分數累積')
+                    
+                    # 自動清理空白行（姓名為空的資料）
+                    if '姓名' in df.columns:
+                        original_count = len(df)
+                        df = df[df['姓名'].notna()].copy()
+                        removed_count = original_count - len(df)
+                        if removed_count > 0:
+                            print(f"檔案 {i+1} 已自動清理 {removed_count} 筆空白資料")
+                    
+                    if merged_df is None:
+                        # 第一個檔案，直接使用
+                        merged_df = df.copy()
+                        # 為活動欄位加上期間標示
+                        merged_df = _self._add_period_suffix(merged_df, f"期間{i+1}")
+                    else:
+                        # 合併後續檔案
+                        merged_df = _self._merge_files(merged_df, df, f"期間{i+1}")
+                    
+                    total_files_loaded += 1
+                    print(f"成功載入檔案 {i+1}: {len(df)} 筆資料")
+                    
+                except FileNotFoundError:
+                    st.warning(f"⚠️ 找不到檔案 {i+1}")
+                    continue
+                except Exception as e:
+                    st.warning(f"⚠️ 讀取檔案 {i+1} 時發生錯誤：{str(e)}")
+                    continue
             
-            return df
-        except FileNotFoundError:
-            st.error(f"❌ 找不到檔案：{_self.file_path}")
-            return None
+            if merged_df is None:
+                st.error("❌ 沒有成功載入任何檔案")
+                return None
+            
+            print(f"合併完成：共載入 {total_files_loaded} 個檔案，{len(merged_df)} 位參賽者")
+            return merged_df
+            
         except Exception as e:
-            st.error(f"❌ 讀取檔案時發生錯誤：{str(e)}")
+            st.error(f"❌ 合併檔案時發生錯誤：{str(e)}")
             return None
+    
+    def _add_period_suffix(self, df, period_name):
+        """為活動欄位加上期間標示"""
+        df_copy = df.copy()
+        # 基本欄位不需要改名
+        basic_columns = ['姓名', '性別', '所屬部門', '員工編號', '分公司代碼', '部門', '電子信箱', '體脂前測', '體脂是否上傳']
+        
+        new_columns = {}
+        for col in df_copy.columns:
+            if col not in basic_columns and col != 'total':
+                # 活動相關欄位加上期間標示
+                new_columns[col] = f"{col}_{period_name}"
+            elif col == 'total':
+                # total欄位改名為該期間的總分
+                new_columns[col] = f"total_{period_name}"
+        
+        df_copy = df_copy.rename(columns=new_columns)
+        return df_copy
+    
+    def _merge_files(self, df1, df2, period_name):
+        """合併兩個檔案的資料"""
+        # 為第二個檔案的欄位加上期間標示
+        df2_renamed = self._add_period_suffix(df2, period_name)
+        
+        # 以姓名為主鍵進行合併
+        merged = pd.merge(
+            df1, df2_renamed, 
+            on='姓名', 
+            how='outer',  # 外部合併，保留所有參賽者
+            suffixes=('', '_dup')
+        )
+        
+        # 處理重複的基本欄位（使用第一個檔案的資料為主）
+        basic_columns = ['性別', '所屬部門', '員工編號', '分公司代碼', '部門', '電子信箱', '體脂前測', '體脂是否上傳']
+        for col in basic_columns:
+            if f"{col}_dup" in merged.columns:
+                # 如果第一個檔案該欄位為空，使用第二個檔案的資料
+                merged[col] = merged[col].fillna(merged[f"{col}_dup"])
+                merged = merged.drop(columns=[f"{col}_dup"])
+        
+        # 計算新的總分（所有期間total相加）
+        total_columns = [col for col in merged.columns if col.startswith('total_期間')]
+        if total_columns:
+            merged['total'] = merged[total_columns].fillna(0).sum(axis=1)
+        
+        return merged
     
     def validate_data(self, df):
         """驗證資料完整性"""
@@ -114,13 +195,19 @@ class DataLoader:
     def get_last_update_time(self):
         """獲取檔案最後更新時間（台灣時區）"""
         try:
-            if os.path.exists(self.file_path):
-                timestamp = os.path.getmtime(self.file_path)
-                # 轉換為台灣時區
-                taipei_tz = pytz.timezone('Asia/Taipei')
-                utc_time = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
-                return utc_time.astimezone(taipei_tz)
-            return None
+            latest_time = None
+            taipei_tz = pytz.timezone('Asia/Taipei')
+            
+            for file_path in self.file_paths:
+                if os.path.exists(file_path):
+                    timestamp = os.path.getmtime(file_path)
+                    utc_time = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
+                    file_time = utc_time.astimezone(taipei_tz)
+                    
+                    if latest_time is None or file_time > latest_time:
+                        latest_time = file_time
+            
+            return latest_time
         except Exception:
             return None
     
