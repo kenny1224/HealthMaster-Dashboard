@@ -154,7 +154,7 @@ git push -u origin main
 3. 連接 GitHub 帳號
 4. 選擇 `HealthMaster-Dashboard` repository
 5. 設定：
-   - **Main file path**: `src/dashboard.py`
+   - **Main file path**: `app.py` (新增的入口文件)
    - **Python version**: 3.9 或以上
 6. 點擊 `Deploy`
 7. 等待 2-3 分鐘完成部署
@@ -224,10 +224,12 @@ HealthMaster/
 ├── src/                          # 程式碼目錄
 │   ├── dashboard.py              # 主儀表板程式
 │   ├── data_loader.py            # 資料載入模組
-│   └── ranking_engine.py         # 排名計算引擎
+│   ├── ranking_engine.py         # 排名計算引擎
+│   └── activity_analyzer.py      # 活動詳細分析器
 │
 ├── data/                         # 資料目錄
-│   └── 20250903分數累積表.xlsx    # Excel 資料檔案
+│   ├── 20250903分數累積表.xlsx    # Excel 資料檔案 (期間1)
+│   └── 20250905分數累積表(0831-0920).xlsx # Excel 資料檔案 (期間2)
 │
 ├── scripts/                      # 工具腳本
 │   ├── update_data.bat           # Windows 更新腳本
@@ -237,6 +239,8 @@ HealthMaster/
 ├── .streamlit/                   # Streamlit 設定
 │   └── config.toml               # 主題與設定
 │
+├── app.py                        # Streamlit Cloud 入口文件
+├── packages.txt                  # 系統套件清單  
 ├── requirements.txt              # Python 套件清單
 ├── .gitignore                    # Git 忽略清單
 ├── README.md                     # 本說明檔案
@@ -335,6 +339,6 @@ streamlit run dashboard.py
 
 ---
 
-**最後更新：** 2025/10/03  
-**版本：** 1.0.0  
+**最後更新：** 2025/10/07  
+**版本：** 2.0.0 - 多期間Excel分析版本  
 **授權：** MIT License
