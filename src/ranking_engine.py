@@ -72,9 +72,9 @@ class RankingEngine:
         female_data = female_data.sort_values('total', ascending=False).reset_index(drop=True)
         female_data['排名'] = range(1, len(female_data) + 1)
         
-        # 添加獎金資訊（使用女性組配置）
-        female_data[['獎金', '獎牌', '顏色']] = female_data['排名'].apply(
-            lambda x: pd.Series(self.get_prize_info(x, 'female'))
+        # 添加獎金資訊（使用女性組配置，加入分數條件）
+        female_data[['獎金', '獎牌', '顏色']] = female_data.apply(
+            lambda row: pd.Series(self.get_prize_info(row['排名'], 'female', row['total'])), axis=1
         )
         
         self.female_df = female_data
@@ -84,9 +84,9 @@ class RankingEngine:
         male_data = male_data.sort_values('total', ascending=False).reset_index(drop=True)
         male_data['排名'] = range(1, len(male_data) + 1)
         
-        # 添加獎金資訊（使用男性組配置）
-        male_data[['獎金', '獎牌', '顏色']] = male_data['排名'].apply(
-            lambda x: pd.Series(self.get_prize_info(x, 'male'))
+        # 添加獎金資訊（使用男性組配置，加入分數條件）
+        male_data[['獎金', '獎牌', '顏色']] = male_data.apply(
+            lambda row: pd.Series(self.get_prize_info(row['排名'], 'male', row['total'])), axis=1
         )
         
         self.male_df = male_data
@@ -94,8 +94,12 @@ class RankingEngine:
         return self.female_df, self.male_df
     
     @staticmethod
-    def get_prize_info(rank, gender='male'):
-        """根據排名和性別獲取獎金資訊"""
+    def get_prize_info(rank, gender='male', total_score=0):
+        """根據排名、性別和總分獲取獎金資訊"""
+        # 新增條件：總分必須大於200分才能獲得獎金
+        if total_score <= 200:
+            return ('-', '', '#FFFFFF')
+            
         if gender == 'female':
             config = RankingEngine.FEMALE_PRIZE_CONFIG
         else:

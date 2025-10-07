@@ -7,6 +7,14 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import sys
+import os
+
+# 添加 src 目錄到路徑以便導入模組
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, 'src')
+sys.path.insert(0, src_dir)
+
 from data_loader import DataLoader
 from ranking_engine import RankingEngine
 
@@ -161,8 +169,6 @@ def display_overview_tab(female_top, male_top):
                 use_container_width=True,
                 height=400
             )
-            
-            st.info(f"💡 共 {len(female_top)} 位參賽者")
         else:
             st.warning("暫無資料")
     
@@ -181,8 +187,6 @@ def display_overview_tab(female_top, male_top):
                 use_container_width=True,
                 height=400
             )
-            
-            st.info(f"💡 共 {len(male_top)} 位參賽者")
         else:
             st.warning("暫無資料")
 
@@ -322,9 +326,11 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
             # 獎金資訊
             max_prize_rank = 28 if group == '女性組' else 14
             prize_line_name = "第28名" if group == '女性組' else "第14名"
+            current_score = person_data['total']
             
-            if person_data['排名'] <= max_prize_rank:
-                st.success(f"🎉 恭喜！您目前排名第 {person_data['排名']} 名，可獲得獎金 **{person_data['獎金']}** {person_data['獎牌']}")
+            # 檢查是否符合獎金條件：排名和分數都要符合
+            if person_data['排名'] <= max_prize_rank and current_score > 200:
+                st.success(f"🎉 恭喜！您目前排名第 {person_data['排名']} 名，總分 {current_score} 分，可獲得獎金 **{person_data['獎金']}** {person_data['獎牌']}")
                 
                 # 計算與前一名的差距
                 group_df = ranking_engine.female_df if group == '女性組' else ranking_engine.male_df
@@ -332,12 +338,18 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                     diff = ranking_engine.get_rank_difference(person_data, group_df)
                     st.info(f"💪 距離第 {person_data['排名']-1} 名還差 **{diff:.0f}** 分，加油！")
             else:
-                # 計算距離獎金線的差距
-                group_df = ranking_engine.female_df if group == '女性組' else ranking_engine.male_df
-                if len(group_df) >= max_prize_rank:
-                    prize_line_score = group_df.iloc[max_prize_rank-1]['total']
-                    diff = prize_line_score - person_data['total']
-                    st.warning(f"距離獎金線（{prize_line_name}）還差 **{diff:.0f}** 分，繼續努力！💪")
+                # 分別提示排名和分數條件
+                if person_data['排名'] > max_prize_rank:
+                    group_df = ranking_engine.female_df if group == '女性組' else ranking_engine.male_df
+                    if len(group_df) >= max_prize_rank:
+                        prize_line_score = group_df.iloc[max_prize_rank-1]['total']
+                        rank_diff = prize_line_score - current_score
+                        st.warning(f"排名未達獎金線（{prize_line_name}），還差 **{rank_diff:.0f}** 分，繼續努力！💪")
+                elif current_score <= 200:
+                    score_diff = 200 - current_score
+                    st.warning(f"總分未達獎金門檻（需大於200分），還差 **{score_diff:.0f}** 分，繼續努力！💪")
+                else:
+                    st.warning(f"雖然總分已達標（{current_score}分），但排名尚未進入獎金圈，繼續加油！💪")
             
             # 分數明細
             st.markdown("### 📈 分數明細")
@@ -419,65 +431,34 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 
                 st.markdown("---")
                 
-                # 分期間詳細資料
-                st.markdown("#### 📅 分期間活動明細")
+                # 整個活動期間統計
+                st.markdown("#### 📅 活動期間統計")
                 
-                # 建立分期間對比表
-                period_data = []
-                periods = set()
-                for activity_type in ['exercise', 'diet', 'bonus', 'club']:
-                    periods.update(person_details[activity_type]['periods'].keys())
+                # 建立整個活動期間的統計表
+                summary_data = [{
+                    '活動類別': '🏃 日常運動',
+                    '總次數': person_details['exercise']['total_count'],
+                    '總得分': person_details['exercise']['total_score']
+                }, {
+                    '活動類別': '🍎 健康飲食', 
+                    '總次數': person_details['diet']['total_count'],
+                    '總得分': person_details['diet']['total_score']
+                }, {
+                    '活動類別': '⭐ 額外加分',
+                    '總次數': person_details['bonus']['total_count'], 
+                    '總得分': person_details['bonus']['total_score']
+                }, {
+                    '活動類別': '🎯 社團活動',
+                    '總次數': len(person_details['club']['total_activities']),
+                    '總得分': person_details['club']['total_score']
+                }]
                 
-                periods = sorted(list(periods))
-                
-                for period in periods:
-                    row = {'期間': period}
-                    
-                    # 運動
-                    if period in person_details['exercise']['periods']:
-                        ex_data = person_details['exercise']['periods'][period]
-                        row['運動次數'] = ex_data['count']
-                        row['運動得分'] = ex_data['score']
-                    else:
-                        row['運動次數'] = 0
-                        row['運動得分'] = 0
-                    
-                    # 飲食
-                    if period in person_details['diet']['periods']:
-                        diet_data = person_details['diet']['periods'][period]
-                        row['飲食次數'] = diet_data['count']
-                        row['飲食得分'] = diet_data['score']
-                    else:
-                        row['飲食次數'] = 0
-                        row['飲食得分'] = 0
-                    
-                    # 額外加分
-                    if period in person_details['bonus']['periods']:
-                        bonus_data = person_details['bonus']['periods'][period]
-                        row['額外加分次數'] = bonus_data['count']
-                        row['額外加分得分'] = bonus_data['score']
-                    else:
-                        row['額外加分次數'] = 0
-                        row['額外加分得分'] = 0
-                    
-                    # 社團活動
-                    if period in person_details['club']['periods']:
-                        club_data = person_details['club']['periods'][period]
-                        row['社團活動項目'] = len(club_data['activities'])
-                        row['社團活動得分'] = club_data['score']
-                    else:
-                        row['社團活動項目'] = 0
-                        row['社團活動得分'] = 0
-                    
-                    period_data.append(row)
-                
-                if period_data:
-                    period_df = pd.DataFrame(period_data)
-                    st.dataframe(
-                        period_df,
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(
+                    summary_df,
+                    use_container_width=True,
+                    hide_index=True
+                )
                 
                 # 社團活動詳細列表
                 if person_details['club']['total_activities']:
@@ -518,10 +499,8 @@ def display_activity_intro_tab():
     
     try:
         # 讀取活動簡介檔案
-        import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(current_dir)
-        intro_path = os.path.join(project_root, '活動簡介.txt')
+        intro_path = os.path.join(current_dir, '活動簡介.txt')
         
         with open(intro_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -539,18 +518,54 @@ def display_statistics_tab(df):
     """顯示統計圖表頁"""
     st.subheader("📈 活動統計分析")
     
-    # 男女分數分布對比
-    st.markdown("### 分數分布對比")
-    fig1 = px.box(
-        df,
-        x='性別',
-        y='total',
-        color='性別',
-        title='男女組分數分布對比',
-        labels={'total': '總分', '性別': '性別組別'},
-        color_discrete_map={'女': '#FF69B4', '男': '#4169E1'}
-    )
-    st.plotly_chart(fig1, use_container_width=True)
+    # 活動次數與分數統計圓餅圖
+    st.markdown("### 活動參與統計")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 活動次數圓餅圖
+        activity_counts = {
+            '運動': df.filter(regex='運動|日常').notna().sum().sum(),
+            '飲食': df.filter(regex='飲食').notna().sum().sum(),
+            '社團活動': df.filter(regex='羽球|瑜珈|桌球|戶外').notna().sum().sum(),
+            '額外加分': df.filter(regex='bonus|加分').notna().sum().sum()
+        }
+        
+        fig1 = px.pie(
+            values=list(activity_counts.values()),
+            names=list(activity_counts.keys()),
+            title='活動次數分布',
+            color_discrete_map={
+                '運動': '#FF6B6B',
+                '飲食': '#4ECDC4', 
+                '社團活動': '#45B7D1',
+                '額外加分': '#96CEB4'
+            }
+        )
+        st.plotly_chart(fig1, use_container_width=True)
+    
+    with col2:
+        # 分數圓餅圖
+        activity_scores = {
+            '運動': df.filter(regex='運動|日常').fillna(0).sum().sum(),
+            '飲食': df.filter(regex='飲食').fillna(0).sum().sum(),
+            '社團活動': df.filter(regex='羽球|瑜珈|桌球|戶外').fillna(0).sum().sum(),
+            '額外加分': df.filter(regex='bonus|加分').fillna(0).sum().sum()
+        }
+        
+        fig2 = px.pie(
+            values=list(activity_scores.values()),
+            names=list(activity_scores.keys()),
+            title='活動分數分布',
+            color_discrete_map={
+                '運動': '#FF6B6B',
+                '飲食': '#4ECDC4',
+                '社團活動': '#45B7D1', 
+                '額外加分': '#96CEB4'
+            }
+        )
+        st.plotly_chart(fig2, use_container_width=True)
     
     # 部門參與度
     if '所屬部門' in df.columns:
