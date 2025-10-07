@@ -70,7 +70,7 @@ def display_header():
     
     col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
-        st.markdown("**📅 活動期間：** 2025/08/08 - 2025/10/31")
+        st.markdown("**📅 資料統計期間：** 2025/08/08 - 2025/09/20")
     with col2:
         loader = get_data_loader()
         update_time = loader.get_last_update_time()
@@ -120,29 +120,29 @@ def display_metrics(stats, activity_stats=None):
         
         with col1:
             st.metric(
-                label="7.1 🏃 日常運動",
+                label="🏃 日常運動",
                 value=f"{activity_stats['exercise']['total_count']}次",
                 delta=f"{activity_stats['exercise']['participants']}人參與"
             )
         
         with col2:
             st.metric(
-                label="7.2 🍎 健康飲食",
+                label="🍎 健康飲食",
                 value=f"{activity_stats['diet']['total_count']}次",
                 delta=f"{activity_stats['diet']['participants']}人參與"
             )
         
         with col3:
             st.metric(
-                label="7.3 ⭐ 額外加分",
+                label="⭐ 額外加分",
                 value=f"{activity_stats['bonus']['total_count']}次",
                 delta=f"{activity_stats['bonus']['participants']}人參與"
             )
         
         with col4:
             st.metric(
-                label="7.4 🎯 社團活動",
-                value=f"{activity_stats['club']['total_activities']}項",
+                label="🎯 社團活動",
+                value=f"{activity_stats['club']['total_activities']}次",
                 delta=f"{activity_stats['club']['participants']}人參與"
             )
 

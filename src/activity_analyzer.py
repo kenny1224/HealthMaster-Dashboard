@@ -188,23 +188,20 @@ class ActivityAnalyzer:
             
             person = self.detailed_data[name]
             
-            # 使用最新期間的分數（避免重複累加，因為Excel total已經是累積值）
-            if period_name == "期間2":  # 使用最新期間的數據
-                person['exercise']['total_score'] = data['exercise']['score']
-                person['diet']['total_score'] = data['diet']['score']
-                person['bonus']['total_score'] = data['bonus']['score']
-                person['club']['total_score'] = data['club']['score']
-            
-            # 次數可以累加（記錄所有活動參與次數）
+            # 累加各期間的分數和次數（與data_loader的邏輯一致）
+            person['exercise']['total_score'] += data['exercise']['score']
             person['exercise']['total_count'] += data['exercise']['count']
             person['exercise']['periods'][period_name] = data['exercise']
             
+            person['diet']['total_score'] += data['diet']['score']
             person['diet']['total_count'] += data['diet']['count']
             person['diet']['periods'][period_name] = data['diet']
             
+            person['bonus']['total_score'] += data['bonus']['score']
             person['bonus']['total_count'] += data['bonus']['count']
             person['bonus']['periods'][period_name] = data['bonus']
             
+            person['club']['total_score'] += data['club']['score']
             person['club']['total_count'] += data['club'].get('count', 0)
             person['club']['total_activities'].extend(data['club']['activities'])
             person['club']['periods'][period_name] = data['club']
