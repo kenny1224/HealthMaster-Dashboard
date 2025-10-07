@@ -1,5 +1,0 @@
-# System packages for Streamlit Cloud deployment
-# 為 Streamlit Cloud 部署所需的系統套件
-
-# 這個項目不需要額外的系統套件
-# Python 套件已在 requirements.txt 中定義
