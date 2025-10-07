@@ -65,17 +65,42 @@ This project uses Python/Streamlit without a traditional build system. No lintin
 
 ## Data Requirements
 
-### Required Excel Structure
-- **Sheet Name**: `分數累積` (hardcoded in DataLoader)
-- **Required Columns**: `姓名` (name), `性別` (gender), `total` (total score)
-- **Valid Gender Values**: `生理女` (female), `生理男` (male)
-- **Column Position**: Flexible - system auto-detects column locations
+### Excel File Structure (data資料夾)
+系統載入兩個不同時間區間的Excel檔案，自動合併參賽者資料。
 
-### Optional Columns
-- `所屬部門` (department)
-- `體脂是否上傳` (body fat upload status)
-- Club activity columns containing keywords: `羽球`, `瑜珈`, `桌球`, `戶外`
-- Score detail columns with keywords: `運動`, `飲食`, `bonus`
+#### 主要工作表：
+1. **分數累積** - 參賽者總分與基本資料
+2. **ALL活動數據統計(運動+飲食)--分數計算表** - 運動與飲食明細
+3. **個人bonus分** - 額外加分活動記錄
+
+#### 分數累積工作表結構：
+- **A-J欄**: 參賽者基本資料
+  - E欄: `姓名` (合併時的KEY值)
+  - F欄: `性別` (生理男/生理女，顯示時自動轉為男/女)
+- **K欄**: 日常運動得分 (運動次數 × 10)
+- **L欄**: 每周飲食得分 (飲食次數 × 10)  
+- **M欄**: 額外加分得分 (額外活動次數 × 30)
+- **N欄-total前**: 社團活動得分 (有分數即表示參加)
+- **total欄**: 該期間總分
+
+#### ALL活動數據統計工作表結構：
+- **D欄**: `姓名` (與分數累積表E欄串接)
+- **E欄**: 飲食次數
+- **G欄**: 運動次數
+
+#### 個人bonus分工作表結構：
+- **A欄**: 參賽者姓名 (出現次數 = 額外加分活動次數)
+
+### 資料整理邏輯：
+系統以參賽者為維度整理以下資料：
+1. 日常運動: 得分與次數統計
+2. 每周飲食: 得分與次數統計  
+3. 額外加分: 得分與次數統計
+4. 社團活動: 得分與參與項目統計
+
+### 顯示位置：
+- **個人查詢頁面**: 顯示個人詳細的四類活動統計
+- **總覽頁面**: 顯示全體參賽者的四類活動總計
 
 ## Prize System
 

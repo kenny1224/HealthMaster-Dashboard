@@ -74,8 +74,9 @@ def display_header():
             st.rerun()
 
 
-def display_metrics(stats):
+def display_metrics(stats, activity_stats=None):
     """顯示關鍵指標"""
+    # 第一行：基本參與數據
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -86,25 +87,56 @@ def display_metrics(stats):
         )
     
     with col2:
-        exercise_records = stats.get('total_exercise_records', 0)
-        st.metric(
-            label="🏃 累計運動紀錄",
-            value=f"{exercise_records}次"
-        )
-    
-    with col3:
-        diet_records = stats.get('total_diet_records', 0)
-        st.metric(
-            label="🍎 累計飲食紀錄",
-            value=f"{diet_records}次"
-        )
-    
-    with col4:
         body_fat_rate = stats.get('body_fat_completion_rate', 0)
         st.metric(
             label="⚖️ 體脂完成率",
             value=f"{body_fat_rate*100:.0f}%"
         )
+    
+    with col3:
+        st.metric(
+            label="📊 平均分數",
+            value=f"{stats.get('avg_score', 0):.0f}分"
+        )
+    
+    with col4:
+        st.metric(
+            label="🏆 最高分數",
+            value=f"{stats.get('max_score', 0):.0f}分"
+        )
+    
+    # 第二行：四大活動類別統計 (7.1-7.4)
+    if activity_stats:
+        st.markdown("### 📈 活動參與統計")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="7.1 🏃 日常運動",
+                value=f"{activity_stats['exercise']['total_count']}次",
+                delta=f"{activity_stats['exercise']['participants']}人參與"
+            )
+        
+        with col2:
+            st.metric(
+                label="7.2 🍎 健康飲食",
+                value=f"{activity_stats['diet']['total_count']}次",
+                delta=f"{activity_stats['diet']['participants']}人參與"
+            )
+        
+        with col3:
+            st.metric(
+                label="7.3 ⭐ 額外加分",
+                value=f"{activity_stats['bonus']['total_count']}次",
+                delta=f"{activity_stats['bonus']['participants']}人參與"
+            )
+        
+        with col4:
+            st.metric(
+                label="7.4 🎯 社團活動",
+                value=f"{activity_stats['club']['total_activities']}項",
+                delta=f"{activity_stats['club']['participants']}人參與"
+            )
 
 
 def display_overview_tab(female_top, male_top):
@@ -241,7 +273,7 @@ def display_full_ranking_tab(df, gender_label, emoji):
         st.warning("沒有符合條件的資料")
 
 
-def display_personal_query_tab(ranking_engine):
+def display_personal_query_tab(ranking_engine, activity_analyzer):
     """顯示個人查詢頁"""
     st.subheader("🔍 個人成績查詢")
     
@@ -347,68 +379,134 @@ def display_personal_query_tab(ranking_engine):
                 for activity in activities:
                     st.markdown(f"- {activity}")
             
-            # 活動參與記錄
-            st.markdown("### 🏃‍♂️ 活動參與記錄")
+            # 詳細活動分析
+            st.markdown("### 🏃‍♂️ 詳細活動分析")
             
-            # 提取活動記錄（排除基本資訊欄位）
-            exclude_columns = ['排名', '獎金', '獎牌', '顏色', '姓名', '性別', '所屬部門', 
-                             '員工編號', '分公司代碼', '部門', '電子信箱', 'total']
+            # 取得個人詳細資料
+            person_details = activity_analyzer.get_person_details(selected_name)
             
-            # 分類顯示活動記錄
-            activity_records = {}
-            
-            for col in person_data.index:
-                if col not in exclude_columns and pd.notna(person_data[col]) and person_data[col] != 0:
-                    # 根據欄位名稱分類
-                    if '期間1' in col:
-                        category = "📅 第一期間活動"
-                    elif '期間2' in col:
-                        category = "📅 第二期間活動"
-                    elif 'total_期間' in col:
-                        category = "📊 各期間總分"
-                    else:
-                        category = "📝 其他記錄"
-                    
-                    if category not in activity_records:
-                        activity_records[category] = []
-                    
-                    # 清理欄位名稱（移除期間標示）
-                    clean_name = col.replace('_期間1', '').replace('_期間2', '')
-                    activity_records[category].append((clean_name, person_data[col]))
-            
-            # 顯示分類的活動記錄
-            if activity_records:
-                for category, records in activity_records.items():
-                    st.markdown(f"#### {category}")
-                    
-                    # 建立該類別的資料框
-                    if records:
-                        records_df = pd.DataFrame(records, columns=['活動項目', '分數/狀態'])
-                        st.dataframe(
-                            records_df,
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                    st.markdown("---")
+            if person_details:
+                # 四大類活動統計
+                col1, col2, col3, col4 = st.columns(4)
                 
-                # 下載活動記錄
-                all_records = []
-                for category, records in activity_records.items():
-                    for activity, score in records:
-                        all_records.append([category, activity, score])
-                
-                if all_records:
-                    download_df = pd.DataFrame(all_records, columns=['類別', '活動項目', '分數/狀態'])
-                    csv_data = download_df.to_csv(index=False, encoding='utf-8-sig')
-                    st.download_button(
-                        label="📥 下載活動記錄",
-                        data=csv_data,
-                        file_name=f"{selected_name}_活動記錄.csv",
-                        mime="text/csv",
-                        use_container_width=True
+                with col1:
+                    st.metric(
+                        label="🏃 日常運動",
+                        value=f"{person_details['exercise']['total_count']} 次",
+                        delta=f"{person_details['exercise']['total_score']} 分"
                     )
+                
+                with col2:
+                    st.metric(
+                        label="🍎 健康飲食", 
+                        value=f"{person_details['diet']['total_count']} 次",
+                        delta=f"{person_details['diet']['total_score']} 分"
+                    )
+                
+                with col3:
+                    st.metric(
+                        label="⭐ 額外加分",
+                        value=f"{person_details['bonus']['total_count']} 次", 
+                        delta=f"{person_details['bonus']['total_score']} 分"
+                    )
+                
+                with col4:
+                    st.metric(
+                        label="🎯 社團活動",
+                        value=f"{len(person_details['club']['total_activities'])} 項",
+                        delta=f"{person_details['club']['total_score']} 分"
+                    )
+                
+                st.markdown("---")
+                
+                # 分期間詳細資料
+                st.markdown("#### 📅 分期間活動明細")
+                
+                # 建立分期間對比表
+                period_data = []
+                periods = set()
+                for activity_type in ['exercise', 'diet', 'bonus', 'club']:
+                    periods.update(person_details[activity_type]['periods'].keys())
+                
+                periods = sorted(list(periods))
+                
+                for period in periods:
+                    row = {'期間': period}
+                    
+                    # 運動
+                    if period in person_details['exercise']['periods']:
+                        ex_data = person_details['exercise']['periods'][period]
+                        row['運動次數'] = ex_data['count']
+                        row['運動得分'] = ex_data['score']
+                    else:
+                        row['運動次數'] = 0
+                        row['運動得分'] = 0
+                    
+                    # 飲食
+                    if period in person_details['diet']['periods']:
+                        diet_data = person_details['diet']['periods'][period]
+                        row['飲食次數'] = diet_data['count']
+                        row['飲食得分'] = diet_data['score']
+                    else:
+                        row['飲食次數'] = 0
+                        row['飲食得分'] = 0
+                    
+                    # 額外加分
+                    if period in person_details['bonus']['periods']:
+                        bonus_data = person_details['bonus']['periods'][period]
+                        row['額外加分次數'] = bonus_data['count']
+                        row['額外加分得分'] = bonus_data['score']
+                    else:
+                        row['額外加分次數'] = 0
+                        row['額外加分得分'] = 0
+                    
+                    # 社團活動
+                    if period in person_details['club']['periods']:
+                        club_data = person_details['club']['periods'][period]
+                        row['社團活動項目'] = len(club_data['activities'])
+                        row['社團活動得分'] = club_data['score']
+                    else:
+                        row['社團活動項目'] = 0
+                        row['社團活動得分'] = 0
+                    
+                    period_data.append(row)
+                
+                if period_data:
+                    period_df = pd.DataFrame(period_data)
+                    st.dataframe(
+                        period_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                
+                # 社團活動詳細列表
+                if person_details['club']['total_activities']:
+                    st.markdown("#### 🎯 參與社團活動列表")
+                    for i, activity in enumerate(person_details['club']['total_activities'], 1):
+                        st.markdown(f"{i}. {activity}")
+                
+                # 下載個人詳細報告
+                st.markdown("---")
+                
+                # 準備下載資料
+                download_data = []
+                download_data.append(['類別', '項目', '總次數', '總分數'])
+                download_data.append(['日常運動', '運動', person_details['exercise']['total_count'], person_details['exercise']['total_score']])
+                download_data.append(['健康飲食', '飲食', person_details['diet']['total_count'], person_details['diet']['total_score']])
+                download_data.append(['額外加分', '額外活動', person_details['bonus']['total_count'], person_details['bonus']['total_score']])
+                download_data.append(['社團活動', '社團', len(person_details['club']['total_activities']), person_details['club']['total_score']])
+                
+                download_text = '\n'.join([','.join(map(str, row)) for row in download_data])
+                
+                st.download_button(
+                    label="📥 下載個人活動報告",
+                    data=download_text,
+                    file_name=f"{selected_name}_個人活動報告.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
             else:
-                st.info("暫無活動參與記錄")
+                st.warning("無法取得詳細活動資料，請確認資料來源")
             
         else:
             st.error(f"找不到 {selected_name} 的資料")
@@ -517,8 +615,12 @@ def main():
     # 獲取統計資訊
     stats = loader.get_statistics(df)
     
+    # 獲取活動分析器和活動統計
+    activity_analyzer = loader.get_activity_analyzer()
+    activity_stats = activity_analyzer.get_overall_statistics()
+    
     # 顯示關鍵指標
-    display_metrics(stats)
+    display_metrics(stats, activity_stats)
     
     st.markdown("---")
     
@@ -547,7 +649,7 @@ def main():
         display_full_ranking_tab(male_df, "男性組", "💪")
     
     with tab4:
-        display_personal_query_tab(ranking_engine)
+        display_personal_query_tab(ranking_engine, activity_analyzer)
     
     with tab5:
         display_statistics_tab(df)

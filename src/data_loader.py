@@ -22,7 +22,7 @@ class DataLoader:
         if file_paths is None:
             file_paths = [
                 'data/20250903分數累積表.xlsx',
-                'data/20250905分數累積表(0831-0920) - F.xlsx'
+                'data/20250905分數累積表(0831-0920).xlsx'
             ]
         
         self.file_paths = []
@@ -32,6 +32,9 @@ class DataLoader:
             else:
                 abs_path = file_path
             self.file_paths.append(abs_path)
+        
+        # 初始化活動分析器
+        self.activity_analyzer = None  # 延遲初始化
         
     @st.cache_data(ttl=300)  # 5分鐘快取
     def load_data(_self):
@@ -76,6 +79,12 @@ class DataLoader:
                 return None
             
             print(f"合併完成：共載入 {total_files_loaded} 個檔案，{len(merged_df)} 位參賽者")
+            
+            # 載入詳細活動分析
+            print("正在進行詳細活動分析...")
+            activity_analyzer = _self.get_activity_analyzer()
+            activity_analyzer.load_detailed_data()
+            
             return merged_df
             
         except Exception as e:
@@ -282,3 +291,19 @@ class DataLoader:
             stats['total_diet_records'] = diet_records
         
         return stats
+    
+    def get_activity_analyzer(self):
+        """取得活動分析器"""
+        if self.activity_analyzer is None:
+            try:
+                from activity_analyzer import ActivityAnalyzer
+                self.activity_analyzer = ActivityAnalyzer(self.file_paths)
+            except ImportError:
+                # 如果相對導入失敗，嘗試絕對導入
+                import sys
+                import os
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                sys.path.insert(0, current_dir)
+                from activity_analyzer import ActivityAnalyzer
+                self.activity_analyzer = ActivityAnalyzer(self.file_paths)
+        return self.activity_analyzer

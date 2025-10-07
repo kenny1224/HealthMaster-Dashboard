@@ -40,3 +40,6 @@ Thumbs.db
 # Temporary files
 temp_read_excel.py
 *.tmp
+~$*.xlsx
+~$*.xls
+nul
