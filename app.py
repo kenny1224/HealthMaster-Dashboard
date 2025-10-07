@@ -370,29 +370,29 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 with col1:
                     st.metric(
                         label="🏃 日常運動",
-                        value=f"{person_details['exercise']['total_count']} 次",
-                        delta=f"{person_details['exercise']['total_score']} 分"
+                        value=f"{int(person_details['exercise']['total_count'])} 次",
+                        delta=f"{int(person_details['exercise']['total_score'])} 分"
                     )
                 
                 with col2:
                     st.metric(
                         label="🍎 健康飲食", 
-                        value=f"{person_details['diet']['total_count']} 次",
-                        delta=f"{person_details['diet']['total_score']} 分"
+                        value=f"{int(person_details['diet']['total_count'])} 次",
+                        delta=f"{int(person_details['diet']['total_score'])} 分"
                     )
                 
                 with col3:
                     st.metric(
                         label="⭐ 額外加分",
-                        value=f"{person_details['bonus']['total_count']} 次", 
-                        delta=f"{person_details['bonus']['total_score']} 分"
+                        value=f"{int(person_details['bonus']['total_count'])} 次", 
+                        delta=f"{int(person_details['bonus']['total_score'])} 分"
                     )
                 
                 with col4:
                     st.metric(
                         label="🎯 社團活動",
-                        value=f"{person_details['club']['total_count']} 次",
-                        delta=f"{person_details['club']['total_score']} 分"
+                        value=f"{int(person_details['club']['total_count'])} 次",
+                        delta=f"{int(person_details['club']['total_score'])} 分"
                     )
                 
                 st.markdown("---")
@@ -400,31 +400,92 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 # 整個活動期間統計
                 st.markdown("#### 📅 活動期間統計")
                 
-                # 建立整個活動期間的統計表
-                summary_data = [{
-                    '活動類別': '🏃 日常運動',
-                    '總次數': person_details['exercise']['total_count'],
-                    '總得分': person_details['exercise']['total_score']
-                }, {
-                    '活動類別': '🍎 健康飲食', 
-                    '總次數': person_details['diet']['total_count'],
-                    '總得分': person_details['diet']['total_score']
-                }, {
-                    '活動類別': '⭐ 額外加分',
-                    '總次數': person_details['bonus']['total_count'], 
-                    '總得分': person_details['bonus']['total_score']
-                }, {
-                    '活動類別': '🎯 社團活動',
-                    '總次數': person_details['club']['total_count'],
-                    '總得分': person_details['club']['total_score']
-                }]
-                
-                summary_df = pd.DataFrame(summary_data)
-                st.dataframe(
-                    summary_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                # 從新架構獲取詳細期間統計
+                try:
+                    # 獲取該參賽者各期間的詳細資料
+                    stats_df = new_loader.processor.get_participant_activity_stats()
+                    person_period_data = stats_df[stats_df['姓名'] == selected_name]
+                    
+                    if not person_period_data.empty:
+                        # 準備期間統計表格資料
+                        period_summary = []
+                        
+                        # 按活動類別整理資料
+                        activities = [
+                            ('🏃 日常運動', '日常運動次數', '日常運動得分'),
+                            ('🍎 健康飲食', '飲食次數', '飲食得分'),
+                            ('⭐ 額外加分', '個人Bonus次數', '個人Bonus得分'),
+                            ('🎯 社團活動', '參加社團次數', '參加社團得分')
+                        ]
+                        
+                        for activity_name, count_col, score_col in activities:
+                            row_data = {'活動類別': activity_name}
+                            
+                            # 各期間數據
+                            period_1_data = person_period_data[person_period_data['回合期間'] == '8/8-8/30']
+                            period_2_data = person_period_data[person_period_data['回合期間'] == '8/31-9/20']
+                            
+                            # 8/8-8/30 期間
+                            if not period_1_data.empty:
+                                row_data['8/8-8/30 次數'] = int(period_1_data[count_col].iloc[0])
+                                row_data['8/8-8/30 得分'] = int(period_1_data[score_col].iloc[0])
+                            else:
+                                row_data['8/8-8/30 次數'] = 0
+                                row_data['8/8-8/30 得分'] = 0
+                            
+                            # 8/31-9/20 期間
+                            if not period_2_data.empty:
+                                row_data['8/31-9/20 次數'] = int(period_2_data[count_col].iloc[0])
+                                row_data['8/31-9/20 得分'] = int(period_2_data[score_col].iloc[0])
+                            else:
+                                row_data['8/31-9/20 次數'] = 0
+                                row_data['8/31-9/20 得分'] = 0
+                            
+                            # 總計
+                            total_count = person_period_data[count_col].sum()
+                            total_score = person_period_data[score_col].sum()
+                            row_data['總次數'] = int(total_count)
+                            row_data['總得分'] = int(total_score)
+                            
+                            period_summary.append(row_data)
+                        
+                        # 建立DataFrame並顯示
+                        period_summary_df = pd.DataFrame(period_summary)
+                        st.dataframe(
+                            period_summary_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                    else:
+                        st.warning("無法取得該參賽者的期間詳細資料")
+                        
+                except Exception as e:
+                    st.warning(f"取得期間統計時發生錯誤：{str(e)}")
+                    # 回退到原始顯示方式
+                    summary_data = [{
+                        '活動類別': '🏃 日常運動',
+                        '總次數': int(person_details['exercise']['total_count']),
+                        '總得分': int(person_details['exercise']['total_score'])
+                    }, {
+                        '活動類別': '🍎 健康飲食', 
+                        '總次數': int(person_details['diet']['total_count']),
+                        '總得分': int(person_details['diet']['total_score'])
+                    }, {
+                        '活動類別': '⭐ 額外加分',
+                        '總次數': int(person_details['bonus']['total_count']), 
+                        '總得分': int(person_details['bonus']['total_score'])
+                    }, {
+                        '活動類別': '🎯 社團活動',
+                        '總次數': int(person_details['club']['total_count']),
+                        '總得分': int(person_details['club']['total_score'])
+                    }]
+                    
+                    summary_df = pd.DataFrame(summary_data)
+                    st.dataframe(
+                        summary_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
                 
                 # 社團活動詳細列表 - 新版表格和圖表
                 st.markdown("#### 🎯 參與社團活動列表")
@@ -475,6 +536,9 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                         
                         fig = go.Figure()
                         
+                        # 設定X軸起始日期為2025/8/8
+                        start_date = pd.to_datetime('2025-08-08')
+                        
                         # 添加面積圖
                         fig.add_trace(go.Scatter(
                             x=chart_data['社團活動日期'],
@@ -494,7 +558,11 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                             xaxis_title='社團活動日期',
                             yaxis_title='累計得分',
                             showlegend=False,
-                            height=400
+                            height=400,
+                            xaxis=dict(
+                                range=[start_date, chart_data['社團活動日期'].max()],
+                                type='date'
+                            )
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
