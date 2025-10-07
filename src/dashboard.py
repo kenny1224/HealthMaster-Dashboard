@@ -355,45 +355,7 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 else:
                     st.warning(f"雖然總分已達標（{current_score}分），但排名尚未進入獎金圈，繼續加油！💪")
             
-            # 分數明細
-            st.markdown("### 📈 分數明細")
-            score_breakdown = ranking_engine.get_score_breakdown(person_data)
-            
-            if score_breakdown:
-                cols = st.columns(len(score_breakdown))
-                for idx, (label, score) in enumerate(score_breakdown.items()):
-                    with cols[idx]:
-                        st.metric(label, f"{score:.0f} 分")
-            
-            # 完成項目
-            st.markdown("### ✅ 完成項目")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                body_fat_status = person_data.get('體脂是否上傳', '')
-                if body_fat_status in ['已完成', '✅', '是']:
-                    st.success("✅ 體脂前後測")
-                else:
-                    st.error("❌ 體脂前後測")
-            
-            with col2:
-                if score_breakdown.get('日常運動', 0) > 0:
-                    st.success("✅ 運動紀錄上傳")
-                else:
-                    st.error("❌ 運動紀錄上傳")
-            
-            with col3:
-                if score_breakdown.get('健康飲食', 0) > 0:
-                    st.success("✅ 飲食紀錄上傳")
-                else:
-                    st.error("❌ 飲食紀錄上傳")
-            
-            # 社團活動記錄
-            activities = ranking_engine.get_club_activities(person_data)
-            if activities:
-                st.markdown("### 🎯 參加社團活動記錄")
-                for activity in activities:
-                    st.markdown(f"- {activity}")
+            # 移除分數明細、完成項目、參加社團活動記錄區塊
             
             # 詳細活動分析
             st.markdown("### 🏃‍♂️ 詳細活動分析")
@@ -464,11 +426,92 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                     hide_index=True
                 )
                 
-                # 社團活動詳細列表
-                if person_details['club']['total_activities']:
-                    st.markdown("#### 🎯 參與社團活動列表")
-                    for i, activity in enumerate(person_details['club']['total_activities'], 1):
-                        st.markdown(f"{i}. {activity}")
+                # 社團活動詳細列表 - 新版表格和圖表
+                st.markdown("#### 🎯 參與社團活動列表")
+                
+                # 從新架構取得該參賽者的社團活動明細
+                try:
+                    # 載入新架構的社團活動明細
+                    import sys
+                    import os
+                    sys.path.append('src')
+                    from new_data_loader import NewDataLoader
+                    
+                    new_loader = NewDataLoader()
+                    new_loader.processor.load_all_periods_data()
+                    new_loader.processor.build_participant_activity_stats()
+                    club_details = new_loader.processor.get_club_activity_details()
+                    
+                    # 篩選該參賽者的社團活動
+                    person_club_activities = club_details[club_details['姓名'] == selected_name]
+                    
+                    if not person_club_activities.empty:
+                        # 按日期排序
+                        person_club_activities = person_club_activities.sort_values('社團活動日期')
+                        
+                        # 顯示社團活動表格
+                        st.markdown("**社團活動明細表**")
+                        display_columns = ['社團活動日期', '參加社團', '得分']
+                        st.dataframe(
+                            person_club_activities[display_columns],
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                        
+                        # 建立Stacked Area Chart
+                        st.markdown("**社團活動得分趨勢圖**")
+                        
+                        # 準備圖表資料
+                        chart_data = person_club_activities.copy()
+                        chart_data['社團活動日期'] = pd.to_datetime(chart_data['社團活動日期'])
+                        chart_data = chart_data.sort_values('社團活動日期')
+                        
+                        # 計算累計得分
+                        chart_data['累計得分'] = chart_data['得分'].cumsum()
+                        
+                        # 使用plotly建立Stacked Area Chart
+                        import plotly.express as px
+                        import plotly.graph_objects as go
+                        
+                        fig = go.Figure()
+                        
+                        # 添加面積圖
+                        fig.add_trace(go.Scatter(
+                            x=chart_data['社團活動日期'],
+                            y=chart_data['累計得分'],
+                            mode='lines+markers',
+                            fill='tonexty',
+                            name='累計得分',
+                            hovertemplate='<b>日期:</b> %{x}<br>' +
+                                        '<b>累計得分:</b> %{y}<br>' +
+                                        '<b>參加社團:</b> %{customdata}<br>' +
+                                        '<extra></extra>',
+                            customdata=chart_data['參加社團']
+                        ))
+                        
+                        fig.update_layout(
+                            title='社團活動累計得分趨勢',
+                            xaxis_title='社團活動日期',
+                            yaxis_title='累計得分',
+                            showlegend=False,
+                            height=400
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # 顯示統計摘要
+                        total_activities = len(person_club_activities)
+                        total_score = person_club_activities['得分'].sum()
+                        st.info(f"📊 社團活動摘要：共參加 **{total_activities}** 次活動，累計得分 **{total_score}** 分")
+                    else:
+                        st.info("暫無社團活動參與記錄")
+                        
+                except Exception as e:
+                    st.error(f"載入社團活動資料時發生錯誤：{str(e)}")
+                    # 回退到原有顯示方式
+                    if person_details['club']['total_activities']:
+                        for i, activity in enumerate(person_details['club']['total_activities'], 1):
+                            st.markdown(f"{i}. {activity}")
                 
                 # 下載個人詳細報告
                 st.markdown("---")
