@@ -130,10 +130,12 @@ class DataLoader:
                 merged[col] = merged[col].fillna(merged[f"{col}_dup"])
                 merged = merged.drop(columns=[f"{col}_dup"])
         
-        # 計算新的總分（所有期間total相加）
+        # 使用最新期間的total作為最終分數（而非累加，避免重複計算）
         total_columns = [col for col in merged.columns if col.startswith('total_期間')]
         if total_columns:
-            merged['total'] = merged[total_columns].fillna(0).sum(axis=1)
+            # 使用最後一個期間的total（最完整的累積分數）
+            latest_total_col = max(total_columns, key=lambda x: int(x.split('期間')[1]))
+            merged['total'] = merged[latest_total_col].fillna(0)
         
         return merged
     

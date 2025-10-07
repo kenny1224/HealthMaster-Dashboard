@@ -82,47 +82,42 @@ class ActivityAnalyzer:
             'club': {'score': 0, 'activities': []}
         }
         
-        # 1. 分析運動資料
-        if len(score_row) > 10:  # K欄是運動得分
-            exercise_score = score_row.iloc[10] if pd.notna(score_row.iloc[10]) else 0
-            person_data['exercise']['score'] = exercise_score
-            
-            # 從活動統計表取得運動次數
-            if activity_df is not None:
-                exercise_count = self._get_activity_count(name, activity_df, 'G')  # G欄是運動次數
-                person_data['exercise']['count'] = exercise_count
-            else:
-                # 如果沒有明細表，從分數推算次數 (分數 ÷ 10)
-                person_data['exercise']['count'] = int(exercise_score / 10) if exercise_score > 0 else 0
+        # 1. 分析運動資料 - 優先從分數累積表讀取實際分數，再從活動統計表取得次數
+        exercise_score = score_row.iloc[10] if len(score_row) > 10 and pd.notna(score_row.iloc[10]) else 0
+        person_data['exercise']['score'] = exercise_score
         
-        # 2. 分析飲食資料
-        if len(score_row) > 11:  # L欄是飲食得分
-            diet_score = score_row.iloc[11] if pd.notna(score_row.iloc[11]) else 0
-            person_data['diet']['score'] = diet_score
-            
-            # 從活動統計表取得飲食次數
-            if activity_df is not None:
-                diet_count = self._get_activity_count(name, activity_df, 'E')  # E欄是飲食次數
-                person_data['diet']['count'] = diet_count
-            else:
-                # 如果沒有明細表，從分數推算次數 (分數 ÷ 10)
-                person_data['diet']['count'] = int(diet_score / 10) if diet_score > 0 else 0
+        if activity_df is not None:
+            exercise_count = self._get_activity_count(name, activity_df, 'G')  # G欄是運動次數
+            person_data['exercise']['count'] = exercise_count
+        else:
+            # 從分數推算次數
+            person_data['exercise']['count'] = int(exercise_score / 10) if exercise_score > 0 else 0
         
-        # 3. 分析額外加分資料
-        if len(score_row) > 12:  # M欄是額外加分得分
-            bonus_score = score_row.iloc[12] if pd.notna(score_row.iloc[12]) else 0
-            person_data['bonus']['score'] = bonus_score
-            
-            # 從個人bonus分表取得次數
-            if bonus_df is not None:
-                bonus_count = self._get_bonus_count(name, bonus_df)
-                person_data['bonus']['count'] = bonus_count
-            else:
-                # 如果沒有明細表，從分數推算次數 (分數 ÷ 30)
-                person_data['bonus']['count'] = int(bonus_score / 30) if bonus_score > 0 else 0
+        # 2. 分析飲食資料 - 優先從分數累積表讀取實際分數，再從活動統計表取得次數
+        diet_score = score_row.iloc[11] if len(score_row) > 11 and pd.notna(score_row.iloc[11]) else 0
+        person_data['diet']['score'] = diet_score
         
-        # 4. 分析社團活動資料 (N欄開始到total前)
+        if activity_df is not None:
+            diet_count = self._get_activity_count(name, activity_df, 'E')  # E欄是飲食次數
+            person_data['diet']['count'] = diet_count
+        else:
+            # 從分數推算次數
+            person_data['diet']['count'] = int(diet_score / 10) if diet_score > 0 else 0
+        
+        # 3. 分析額外加分資料 - 優先從分數累積表讀取實際分數，再從bonus表取得次數
+        bonus_score = score_row.iloc[12] if len(score_row) > 12 and pd.notna(score_row.iloc[12]) else 0
+        person_data['bonus']['score'] = bonus_score
+        
+        if bonus_df is not None:
+            bonus_count = self._get_bonus_count(name, bonus_df)
+            person_data['bonus']['count'] = bonus_count
+        else:
+            # 從分數推算次數
+            person_data['bonus']['count'] = int(bonus_score / 30) if bonus_score > 0 else 0
+        
+        # 4. 分析社團活動資料 (N欄開始到total前) - 計算參加次數和總分數
         club_score = 0
+        club_count = 0
         club_activities = []
         
         # 找到total欄位的位置
@@ -139,10 +134,12 @@ class ActivityAnalyzer:
                     col_value = score_row.iloc[i]
                     if pd.notna(col_value) and col_value > 0:
                         col_name = score_row.index[i]
-                        club_score += col_value
+                        club_score += col_value  # 累加分數
+                        club_count += 1  # 參加次數計數
                         club_activities.append(f"{col_name}: {col_value}分")
         
         person_data['club']['score'] = club_score
+        person_data['club']['count'] = club_count  # 新增次數記錄
         person_data['club']['activities'] = club_activities
         
         return person_data
@@ -186,25 +183,29 @@ class ActivityAnalyzer:
                     'exercise': {'total_score': 0, 'total_count': 0, 'periods': {}},
                     'diet': {'total_score': 0, 'total_count': 0, 'periods': {}},
                     'bonus': {'total_score': 0, 'total_count': 0, 'periods': {}},
-                    'club': {'total_score': 0, 'total_activities': [], 'periods': {}}
+                    'club': {'total_score': 0, 'total_count': 0, 'total_activities': [], 'periods': {}}
                 }
             
             person = self.detailed_data[name]
             
-            # 累加各類活動數據
-            person['exercise']['total_score'] += data['exercise']['score']
+            # 使用最新期間的分數（避免重複累加，因為Excel total已經是累積值）
+            if period_name == "期間2":  # 使用最新期間的數據
+                person['exercise']['total_score'] = data['exercise']['score']
+                person['diet']['total_score'] = data['diet']['score']
+                person['bonus']['total_score'] = data['bonus']['score']
+                person['club']['total_score'] = data['club']['score']
+            
+            # 次數可以累加（記錄所有活動參與次數）
             person['exercise']['total_count'] += data['exercise']['count']
             person['exercise']['periods'][period_name] = data['exercise']
             
-            person['diet']['total_score'] += data['diet']['score']
             person['diet']['total_count'] += data['diet']['count']
             person['diet']['periods'][period_name] = data['diet']
             
-            person['bonus']['total_score'] += data['bonus']['score']
             person['bonus']['total_count'] += data['bonus']['count']
             person['bonus']['periods'][period_name] = data['bonus']
             
-            person['club']['total_score'] += data['club']['score']
+            person['club']['total_count'] += data['club'].get('count', 0)
             person['club']['total_activities'].extend(data['club']['activities'])
             person['club']['periods'][period_name] = data['club']
     
@@ -245,9 +246,9 @@ class ActivityAnalyzer:
                 stats['bonus']['participants'] += 1
             
             # 社團活動統計
-            if len(data['club']['total_activities']) > 0:
+            if data['club']['total_count'] > 0:
                 stats['club']['total_score'] += data['club']['total_score']
-                stats['club']['total_activities'] += len(data['club']['total_activities'])
+                stats['club']['total_activities'] += data['club']['total_count']  # 使用次數而非活動列表長度
                 stats['club']['participants'] += 1
         
         return stats

@@ -429,7 +429,7 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 with col4:
                     st.metric(
                         label="🎯 社團活動",
-                        value=f"{len(person_details['club']['total_activities'])} 項",
+                        value=f"{person_details['club']['total_count']} 次",
                         delta=f"{person_details['club']['total_score']} 分"
                     )
                 
@@ -453,7 +453,7 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                     '總得分': person_details['bonus']['total_score']
                 }, {
                     '活動類別': '🎯 社團活動',
-                    '總次數': len(person_details['club']['total_activities']),
+                    '總次數': person_details['club']['total_count'],
                     '總得分': person_details['club']['total_score']
                 }]
                 
@@ -479,7 +479,7 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 download_data.append(['日常運動', '運動', person_details['exercise']['total_count'], person_details['exercise']['total_score']])
                 download_data.append(['健康飲食', '飲食', person_details['diet']['total_count'], person_details['diet']['total_score']])
                 download_data.append(['額外加分', '額外活動', person_details['bonus']['total_count'], person_details['bonus']['total_score']])
-                download_data.append(['社團活動', '社團', len(person_details['club']['total_activities']), person_details['club']['total_score']])
+                download_data.append(['社團活動', '社團', person_details['club']['total_count'], person_details['club']['total_score']])
                 
                 download_text = '\n'.join([','.join(map(str, row)) for row in download_data])
                 
