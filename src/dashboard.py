@@ -329,7 +329,7 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
             current_score = person_data['total']
             
             # 檢查是否符合獎金條件：排名和分數都要符合
-            if person_data['排名'] <= max_prize_rank and current_score > 200:
+            if person_data['排名'] <= max_prize_rank and current_score >= 200:
                 st.success(f"🎉 恭喜！您目前排名第 {person_data['排名']} 名，總分 {current_score} 分，可獲得獎金 **{person_data['獎金']}** {person_data['獎牌']}")
                 
                 # 計算與前一名的差距
@@ -339,15 +339,19 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                     st.info(f"💪 距離第 {person_data['排名']-1} 名還差 **{diff:.0f}** 分，加油！")
             else:
                 # 分別提示排名和分數條件
-                if person_data['排名'] > max_prize_rank:
+                if person_data['排名'] <= max_prize_rank and current_score < 200:
+                    # 特殊情況：進入獎金排名但分數不足200分的提醒
+                    score_diff = 200 - current_score
+                    st.warning(f"🔔 特別提醒：雖然您的排名已進入獎金圈（第 {person_data['排名']} 名），但總分 {current_score} 分未達獎金門檻（需≥200分），還差 **{score_diff:.0f}** 分才能獲得獎金！💪")
+                elif person_data['排名'] > max_prize_rank:
                     group_df = ranking_engine.female_df if group == '女性組' else ranking_engine.male_df
                     if len(group_df) >= max_prize_rank:
                         prize_line_score = group_df.iloc[max_prize_rank-1]['total']
                         rank_diff = prize_line_score - current_score
                         st.warning(f"排名未達獎金線（{prize_line_name}），還差 **{rank_diff:.0f}** 分，繼續努力！💪")
-                elif current_score <= 200:
+                elif current_score < 200:
                     score_diff = 200 - current_score
-                    st.warning(f"總分未達獎金門檻（需大於200分），還差 **{score_diff:.0f}** 分，繼續努力！💪")
+                    st.warning(f"總分未達獎金門檻（需大於等於200分），還差 **{score_diff:.0f}** 分，繼續努力！💪")
                 else:
                     st.warning(f"雖然總分已達標（{current_score}分），但排名尚未進入獎金圈，繼續加油！💪")
             
@@ -566,7 +570,7 @@ def display_activity_intro_tab():
         | 第9-18名 | 各 NT$2,000 |
         | 第19-28名 | 各 NT$1,000 |
         
-        **新增條件：總分必須大於200分才能獲得獎金！**
+        **新增條件：總分必須大於等於200分才能獲得獎金！**
         
         ---
         

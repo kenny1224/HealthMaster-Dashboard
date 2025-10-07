@@ -96,8 +96,8 @@ class RankingEngine:
     @staticmethod
     def get_prize_info(rank, gender='male', total_score=0):
         """根據排名、性別和總分獲取獎金資訊"""
-        # 新增條件：總分必須大於200分才能獲得獎金
-        if total_score <= 200:
+        # 新增條件：總分必須大於等於200分才能獲得獎金
+        if total_score < 200:
             return ('-', '', '#FFFFFF')
             
         if gender == 'female':
