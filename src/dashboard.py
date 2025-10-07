@@ -498,18 +498,80 @@ def display_activity_intro_tab():
     st.subheader("📝 活動簡介")
     
     try:
-        # 讀取活動簡介檔案
+        # 讀取活動簡介檔案 - 嘗試多個可能的路徑
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        intro_path = os.path.join(current_dir, '活動簡介.txt')
+        possible_paths = [
+            os.path.join(current_dir, '活動簡介.txt'),  # 同目錄
+            os.path.join(os.path.dirname(current_dir), '活動簡介.txt'),  # 上層目錄（src的話）
+            '活動簡介.txt'  # 相對路徑
+        ]
         
-        with open(intro_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        content = None
+        for intro_path in possible_paths:
+            try:
+                with open(intro_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                break
+            except FileNotFoundError:
+                continue
         
-        # 顯示內容
-        st.markdown(content)
+        if content:
+            # 顯示內容
+            st.markdown(content)
+        else:
+            raise FileNotFoundError("活動簡介檔案未找到")
         
     except FileNotFoundError:
-        st.error("❌ 找不到活動簡介檔案")
+        # 如果找不到檔案，顯示預設內容
+        st.markdown("""
+        ## 🏃‍♂️ 健康達人積分賽
+        
+        ### ✅ 活動簡介
+        本次「健康達人積分賽」以「運動＋健康飲食＋達成合理體脂」為核心，
+        陪伴大家養成良好生活習慣，達成健康減脂或維持理想體態的目標💪
+        
+        📅 **活動期間：** 2025/08/08 - 2025/10/31  
+        📌 **報名截止：** 2025/07/31  
+        
+        ### ✅ 活動適合誰？
+        👟 無論你是哪一種，都很適合參加——
+        1. **原本就有運動習慣：** 邊運動邊賺獎金，還能衝排行榜！
+        2. **想培養運動習慣：** 給自己三個月，建立健康生活步調！
+        3. **想認識運動夥伴：** 健行、羽球、瑜珈、桌球，一起動起來！
+        
+        ### ✅ 參加辦法
+        📸 拍照或截圖運動記錄、上傳、拿分數三大類別：
+        1. 體脂前後測
+        2. 日常運動紀錄（健走、超慢跑、瑜珈、健身、伸展拉筋、氣功、滑板、潛水衝浪都算）
+        3. 指定主題健康飲食紀錄（拍照＋上傳）
+        
+        📈 每一項都能累積積分，爭奪健康達人榜！
+        
+        ### ✅ 獎勵內容
+        🏆 **總獎金超過 30,000 元！**
+        
+        #### 男子組獎金
+        | 名次 | 獎金 |
+        |------|------|
+        | 第1名 | NT$6,000 |
+        | 第2-4名 | 各 NT$3,000 |
+        | 第5-9名 | 各 NT$2,000 |
+        | 第10-14名 | 各 NT$1,000 |
+        
+        #### 女子組獎金
+        | 名次 | 獎金 |
+        |------|------|
+        | 第1-2名 | 各 NT$6,000 |
+        | 第3-8名 | 各 NT$3,000 |
+        | 第9-18名 | 各 NT$2,000 |
+        | 第19-28名 | 各 NT$1,000 |
+        
+        **新增條件：總分必須大於200分才能獲得獎金！**
+        
+        ---
+        
+        💪 加油！下一位健康達人就是您！
+        """)
     except Exception as e:
         st.error(f"❌ 讀取活動簡介時發生錯誤：{str(e)}")
 
