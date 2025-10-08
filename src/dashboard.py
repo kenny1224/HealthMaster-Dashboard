@@ -578,54 +578,123 @@ def display_activity_intro_tab():
     except FileNotFoundError:
         # 如果找不到檔案，顯示預設內容
         st.markdown("""
-        ## 🏃‍♂️ 健康達人積分賽
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1 style="font-size: 2.5rem; color: #4CAF50; margin-bottom: 1rem;">🏃‍♂️ 健康達人積分賽</h1>
+        </div>
+        """, unsafe_allow_html=True)
         
-        ### ✅ 活動簡介
-        本次「健康達人積分賽」以「運動＋健康飲食＋達成合理體脂」為核心，
-        陪伴大家養成良好生活習慣，達成健康減脂或維持理想體態的目標💪
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
+            <h2 style="color: white; margin-bottom: 1rem;">✨ 活動簡介</h2>
+            <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                本次「健康達人積分賽」以<strong>「運動＋健康飲食＋達成合理體脂」</strong>為核心，<br>
+                陪伴大家養成良好生活習慣，達成健康減脂或維持理想體態的目標 💪
+            </p>
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                <div style="text-align: center; margin: 0.5rem;">
+                    <h3 style="color: #FFD700; margin-bottom: 0.5rem;">📅 活動期間</h3>
+                    <p style="font-size: 1.1rem; font-weight: bold;">2025/08/08 - 2025/10/31</p>
+                </div>
+                <div style="text-align: center; margin: 0.5rem;">
+                    <h3 style="color: #FFD700; margin-bottom: 0.5rem;">📌 報名截止</h3>
+                    <p style="font-size: 1.1rem; font-weight: bold;">2025/07/31</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        📅 **活動期間：** 2025/08/08 - 2025/10/31  
-        📌 **報名截止：** 2025/07/31  
+        col1, col2 = st.columns(2)
         
-        ### ✅ 活動適合誰？
-        👟 無論你是哪一種，都很適合參加——
-        1. **原本就有運動習慣：** 邊運動邊賺獎金，還能衝排行榜！
-        2. **想培養運動習慣：** 給自己三個月，建立健康生活步調！
-        3. **想認識運動夥伴：** 健行、羽球、瑜珈、桌球，一起動起來！
+        with col1:
+            st.markdown("""
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; border-left: 5px solid #28a745;">
+                <h3 style="color: #28a745; margin-bottom: 1rem;">👥 活動適合誰？</h3>
+                <p style="font-size: 1rem; line-height: 1.6; margin-bottom: 1rem;">
+                    👟 無論你是哪一種，都很適合參加——
+                </p>
+                <ul style="font-size: 1rem; line-height: 1.8; padding-left: 1.5rem;">
+                    <li><strong>原本就有運動習慣：</strong><br>邊運動邊賺獎金，還能衝排行榜！</li>
+                    <li><strong>想培養運動習慣：</strong><br>給自己三個月，建立健康生活步調！</li>
+                    <li><strong>想認識運動夥伴：</strong><br>健行、羽球、瑜珈、桌球，一起動起來！</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
         
-        ### ✅ 參加辦法
-        📸 拍照或截圖運動記錄、上傳、拿分數三大類別：
-        1. 體脂前後測
-        2. 日常運動紀錄（健走、超慢跑、瑜珈、健身、伸展拉筋、氣功、滑板、潛水衝浪都算）
-        3. 指定主題健康飲食紀錄（拍照＋上傳）
+        with col2:
+            st.markdown("""
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; border-left: 5px solid #17a2b8;">
+                <h3 style="color: #17a2b8; margin-bottom: 1rem;">📸 參加辦法</h3>
+                <p style="font-size: 1rem; line-height: 1.6; margin-bottom: 1rem;">
+                    拍照或截圖運動記錄、上傳、拿分數三大類別：
+                </p>
+                <ol style="font-size: 1rem; line-height: 1.8; padding-left: 1.5rem;">
+                    <li><strong>體脂前後測</strong></li>
+                    <li><strong>日常運動紀錄</strong><br>
+                        <small style="color: #666;">健走、超慢跑、瑜珈、健身、伸展拉筋、氣功、滑板、潛水衝浪都算</small>
+                    </li>
+                    <li><strong>指定主題健康飲食紀錄</strong><br>
+                        <small style="color: #666;">拍照＋上傳</small>
+                    </li>
+                </ol>
+                <p style="font-size: 1.1rem; font-weight: bold; color: #17a2b8; text-align: center; margin-top: 1rem;">
+                    📈 每一項都能累積積分，爭奪健康達人榜！
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        📈 每一項都能累積積分，爭奪健康達人榜！
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                    color: white; padding: 2rem; border-radius: 15px; margin: 2rem 0;">
+            <h2 style="color: white; text-align: center; margin-bottom: 1.5rem;">🏆 獎勵內容</h2>
+            <h3 style="color: #FFD700; text-align: center; font-size: 1.5rem; margin-bottom: 2rem;">
+                總獎金超過 30,000 元！
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
         
-        ### ✅ 獎勵內容
-        🏆 **總獎金超過 30,000 元！**
+        col1, col2 = st.columns(2)
         
-        #### 男子組獎金
-        | 名次 | 獎金 |
-        |------|------|
-        | 第1名 | NT$6,000 |
-        | 第2-4名 | 各 NT$3,000 |
-        | 第5-9名 | 各 NT$2,000 |
-        | 第10-14名 | 各 NT$1,000 |
+        with col1:
+            st.markdown("""
+            #### 💪 男子組獎金
+            | 🏅 名次 | 💰 獎金 |
+            |---------|---------|
+            | 🥇 第1名 | **NT$6,000** |
+            | 🥈 第2-4名 | 各 NT$3,000 |
+            | 🥉 第5-9名 | 各 NT$2,000 |
+            | 🏆 第10-14名 | 各 NT$1,000 |
+            """)
         
-        #### 女子組獎金
-        | 名次 | 獎金 |
-        |------|------|
-        | 第1-2名 | 各 NT$6,000 |
-        | 第3-8名 | 各 NT$3,000 |
-        | 第9-18名 | 各 NT$2,000 |
-        | 第19-28名 | 各 NT$1,000 |
+        with col2:
+            st.markdown("""
+            #### 🌸 女子組獎金
+            | 🏅 名次 | 💰 獎金 |
+            |---------|---------|
+            | 🥇 第1-2名 | 各 **NT$6,000** |
+            | 🥈 第3-8名 | 各 NT$3,000 |
+            | 🥉 第9-18名 | 各 NT$2,000 |
+            | 🏆 第19-28名 | 各 NT$1,000 |
+            """)
         
-        **新增條件：總分必須大於等於200分才能獲得獎金！**
+        st.markdown("""
+        <div style="background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 10px; 
+                    padding: 1.5rem; margin: 2rem 0; text-align: center;">
+            <h3 style="color: #856404; margin-bottom: 1rem;">⚠️ 重要條件</h3>
+            <p style="font-size: 1.2rem; font-weight: bold; color: #856404; margin-bottom: 0;">
+                總分必須大於等於 <span style="color: #dc3545; font-size: 1.4rem;">200分</span> 才能獲得獎金！
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        ---
-        
-        💪 加油！下一位健康達人就是您！
-        """)
+        st.markdown("""
+        <div style="text-align: center; background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); 
+                    color: white; padding: 2rem; border-radius: 15px; margin-top: 2rem;">
+            <h2 style="color: white; font-size: 1.8rem; margin-bottom: 0;">
+                💪 加油！下一位健康達人就是您！
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
     except Exception as e:
         st.error(f"❌ 讀取活動簡介時發生錯誤：{str(e)}")
 
