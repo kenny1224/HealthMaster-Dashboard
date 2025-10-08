@@ -196,15 +196,15 @@ def display_full_ranking_tab(df, gender_label, emoji):
     st.subheader(f"{emoji} {gender_label}完整排行榜（共 {len(df)} 人）")
     
     # 搜尋和篩選
-    col1, col2, col3 = st.columns([3, 3, 2])
-    
+    col1, col2 = st.columns([3, 3])
+
     with col1:
         search_name = st.text_input(
             "🔍 搜尋姓名",
             key=f"search_{gender_label}",
             placeholder="輸入姓名..."
         )
-    
+
     with col2:
         if '所屬部門' in df.columns:
             departments = ['全部'] + sorted(df['所屬部門'].unique().tolist())
@@ -215,17 +215,6 @@ def display_full_ranking_tab(df, gender_label, emoji):
             )
         else:
             dept_filter = '全部'
-    
-    with col3:
-        # 下載按鈕
-        csv = df.to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="📥 下載排名表",
-            data=csv,
-            file_name=f"{gender_label}_排名表.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
     
     # 篩選資料
     filtered_df = df.copy()
@@ -515,26 +504,6 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                         for i, activity in enumerate(person_details['club']['total_activities'], 1):
                             st.markdown(f"{i}. {activity}")
                 
-                # 下載個人詳細報告
-                st.markdown("---")
-                
-                # 準備下載資料
-                download_data = []
-                download_data.append(['類別', '項目', '總次數', '總分數'])
-                download_data.append(['日常運動', '運動', person_details['exercise']['total_count'], person_details['exercise']['total_score']])
-                download_data.append(['健康飲食', '飲食', person_details['diet']['total_count'], person_details['diet']['total_score']])
-                download_data.append(['額外加分', '額外活動', person_details['bonus']['total_count'], person_details['bonus']['total_score']])
-                download_data.append(['社團活動', '社團', person_details['club']['total_count'], person_details['club']['total_score']])
-                
-                download_text = '\n'.join([','.join(map(str, row)) for row in download_data])
-                
-                st.download_button(
-                    label="📥 下載個人活動報告",
-                    data=download_text,
-                    file_name=f"{selected_name}_個人活動報告.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
             else:
                 st.warning("無法取得詳細活動資料，請確認資料來源")
             
@@ -700,40 +669,40 @@ def display_statistics_tab(df):
     
     # 活動次數與分數統計圓餅圖
     st.markdown("### 活動參與統計")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        # 活動次數圓餅圖
+        # 活動次數圓餅圖 - 使用新的欄位名稱
         activity_counts = {
-            '運動': df.filter(regex='運動|日常').notna().sum().sum(),
-            '飲食': df.filter(regex='飲食').notna().sum().sum(),
-            '社團活動': df.filter(regex='羽球|瑜珈|桌球|戶外').notna().sum().sum(),
-            '額外加分': df.filter(regex='bonus|加分').notna().sum().sum()
+            '運動': df['日常運動總次數'].sum() if '日常運動總次數' in df.columns else 0,
+            '飲食': df['飲食總次數'].sum() if '飲食總次數' in df.columns else 0,
+            '社團活動': df['社團活動總次數'].sum() if '社團活動總次數' in df.columns else 0,
+            '額外加分': df['Bonus總次數'].sum() if 'Bonus總次數' in df.columns else 0
         }
-        
+
         fig1 = px.pie(
             values=list(activity_counts.values()),
             names=list(activity_counts.keys()),
             title='活動次數分布',
             color_discrete_map={
                 '運動': '#FF6B6B',
-                '飲食': '#4ECDC4', 
+                '飲食': '#4ECDC4',
                 '社團活動': '#45B7D1',
                 '額外加分': '#96CEB4'
             }
         )
         st.plotly_chart(fig1, use_container_width=True)
-    
+
     with col2:
-        # 分數圓餅圖
+        # 分數圓餅圖 - 使用新的欄位名稱
         activity_scores = {
-            '運動': df.filter(regex='運動|日常').fillna(0).sum().sum(),
-            '飲食': df.filter(regex='飲食').fillna(0).sum().sum(),
-            '社團活動': df.filter(regex='羽球|瑜珈|桌球|戶外').fillna(0).sum().sum(),
-            '額外加分': df.filter(regex='bonus|加分').fillna(0).sum().sum()
+            '運動': df['日常運動總分'].sum() if '日常運動總分' in df.columns else 0,
+            '飲食': df['飲食總分'].sum() if '飲食總分' in df.columns else 0,
+            '社團活動': df['社團活動總分'].sum() if '社團活動總分' in df.columns else 0,
+            '額外加分': df['Bonus總分'].sum() if 'Bonus總分' in df.columns else 0
         }
-        
+
         fig2 = px.pie(
             values=list(activity_scores.values()),
             names=list(activity_scores.keys()),
@@ -741,7 +710,7 @@ def display_statistics_tab(df):
             color_discrete_map={
                 '運動': '#FF6B6B',
                 '飲食': '#4ECDC4',
-                '社團活動': '#45B7D1', 
+                '社團活動': '#45B7D1',
                 '額外加分': '#96CEB4'
             }
         )
