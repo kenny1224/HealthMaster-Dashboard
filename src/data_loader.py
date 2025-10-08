@@ -18,12 +18,9 @@ class DataLoader:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_dir)
         
-        # 預設載入兩個期間的檔案
+        # 使用新的EXCEL檔案
         if file_paths is None:
-            file_paths = [
-                'data/20250903分數累積表(0808-0830).xlsx',
-                'data/20250905分數累積表(0831-0920).xlsx'
-            ]
+            file_paths = ['data/每周分數累積.xlsx']
         
         self.file_paths = []
         for file_path in file_paths:
@@ -35,50 +32,30 @@ class DataLoader:
         
         # 初始化活動分析器
         self.activity_analyzer = None  # 延遲初始化
+        self.new_loader = None  # 新資料載入器實例
         
     @st.cache_data(ttl=300)  # 5分鐘快取
     def load_data(_self):
-        """載入並合併多個分數累積表"""
+        """載入新的EXCEL檔案結構資料"""
         try:
-            merged_df = None
-            total_files_loaded = 0
+            # 使用新的資料載入器
+            from new_excel_data_loader import NewExcelDataLoader
             
-            for i, file_path in enumerate(_self.file_paths):
-                try:
-                    df = pd.read_excel(file_path, sheet_name='分數累積')
-                    
-                    # 自動清理空白行（姓名為空的資料）
-                    if '姓名' in df.columns:
-                        original_count = len(df)
-                        df = df[df['姓名'].notna()].copy()
-                        removed_count = original_count - len(df)
-                        if removed_count > 0:
-                            print(f"檔案 {i+1} 已自動清理 {removed_count} 筆空白資料")
-                    
-                    if merged_df is None:
-                        # 第一個檔案，直接使用
-                        merged_df = df.copy()
-                        # 為活動欄位加上期間標示
-                        merged_df = _self._add_period_suffix(merged_df, f"期間{i+1}")
-                    else:
-                        # 合併後續檔案
-                        merged_df = _self._merge_files(merged_df, df, f"期間{i+1}")
-                    
-                    total_files_loaded += 1
-                    print(f"成功載入檔案 {i+1}: {len(df)} 筆資料")
-                    
-                except FileNotFoundError:
-                    st.warning(f"⚠️ 找不到檔案 {i+1}")
-                    continue
-                except Exception as e:
-                    st.warning(f"⚠️ 讀取檔案 {i+1} 時發生錯誤：{str(e)}")
-                    continue
+            _self.new_loader = NewExcelDataLoader(_self.file_paths[0])
+            participant_stats = _self.new_loader.load_all_data()
             
-            if merged_df is None:
-                st.error("❌ 沒有成功載入任何檔案")
+            if participant_stats is None:
+                st.error("❌ 無法載入新Excel檔案資料")
                 return None
             
-            print(f"合併完成：共載入 {total_files_loaded} 個檔案，{len(merged_df)} 位參賽者")
+            # 轉換為適合儀表板的格式
+            merged_df = _self._convert_to_dashboard_format(participant_stats)
+            
+            if merged_df is None:
+                st.error("❌ 資料格式轉換失敗")
+                return None
+            
+            print(f"載入完成：{len(merged_df)} 位參賽者")
             
             # 載入詳細活動分析
             print("正在進行詳細活動分析...")
@@ -89,6 +66,96 @@ class DataLoader:
             
         except Exception as e:
             st.error(f"❌ 合併檔案時發生錯誤：{str(e)}")
+            return None
+    
+    def _convert_to_dashboard_format(self, participant_stats):
+        """將新的參加者活動統計表轉換為儀表板格式"""
+        try:
+            # 取得帳號資訊
+            account_info = self.new_loader.account_info
+            if account_info is None:
+                print("警告：無法取得帳號資訊")
+                return None
+            
+            # 按姓名聚合統計資料
+            dashboard_data = []
+            
+            # 按姓名分組
+            grouped = participant_stats.groupby('姓名')
+            
+            for name, group in grouped:
+                # 取得該參與者的帳號資訊
+                participant_id = group['id'].iloc[0]
+                
+                # 從帳號整理取得基本資訊
+                gender = ''
+                department = ''
+                if participant_id in account_info.index:
+                    gender = account_info.loc[participant_id, '性別'] if '性別' in account_info.columns else ''
+                    # 尋找部門欄位
+                    dept_columns = ['所屬部門', '部門', 'department']
+                    for col in dept_columns:
+                        if col in account_info.columns:
+                            department = account_info.loc[participant_id, col]
+                            break
+                
+                # 計算總分
+                total_exercise = group['日常運動得分'].sum()
+                total_diet = group['飲食得分'].sum()
+                total_bonus = group['個人Bonus得分'].sum()
+                total_club = group['參加社團得分'].sum()
+                total_score = total_exercise + total_diet + total_bonus + total_club
+                
+                # 組合儀表板格式的資料
+                dashboard_row = {
+                    '姓名': name,
+                    '性別': gender,
+                    '所屬部門': department,
+                    'total': total_score,
+                    '日常運動總分': total_exercise,
+                    '飲食總分': total_diet,
+                    'Bonus總分': total_bonus,
+                    '社團活動總分': total_club,
+                    '日常運動總次數': group['日常運動次數'].sum(),
+                    '飲食總次數': group['飲食次數'].sum(),
+                    'Bonus總次數': group['個人Bonus次數'].sum(),
+                    '社團活動總次數': group['參加社團次數'].sum()
+                }
+                
+                # 添加期間分解資料
+                for _, period_row in group.iterrows():
+                    period = period_row['回合期間']
+                    if '8/8' in period:
+                        suffix = '_期間1'
+                    elif '8/31' in period:
+                        suffix = '_期間2'
+                    else:
+                        suffix = f"_{period}"
+                    
+                    dashboard_row[f'日常運動得分{suffix}'] = period_row['日常運動得分']
+                    dashboard_row[f'飲食得分{suffix}'] = period_row['飲食得分']
+                    dashboard_row[f'個人Bonus得分{suffix}'] = period_row['個人Bonus得分']
+                    dashboard_row[f'社團活動得分{suffix}'] = period_row['參加社團得分']
+                    dashboard_row[f'total{suffix}'] = (period_row['日常運動得分'] + 
+                                                     period_row['飲食得分'] + 
+                                                     period_row['個人Bonus得分'] + 
+                                                     period_row['參加社團得分'])
+                
+                dashboard_data.append(dashboard_row)
+            
+            # 轉換為DataFrame
+            df = pd.DataFrame(dashboard_data)
+            
+            # 填充缺失值
+            df = df.fillna(0)
+            
+            print(f"格式轉換完成：{len(df)} 位參賽者")
+            return df
+            
+        except Exception as e:
+            print(f"格式轉換失敗：{str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def _add_period_suffix(self, df, period_name):
@@ -358,14 +425,15 @@ class DataLoader:
         """取得活動分析器"""
         if self.activity_analyzer is None:
             try:
-                from activity_analyzer import ActivityAnalyzer
-                self.activity_analyzer = ActivityAnalyzer(self.file_paths)
+                # 使用新的活動分析器
+                from new_activity_analyzer import NewActivityAnalyzer
+                self.activity_analyzer = NewActivityAnalyzer(self.new_loader)
             except ImportError:
                 # 如果相對導入失敗，嘗試絕對導入
                 import sys
                 import os
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 sys.path.insert(0, current_dir)
-                from activity_analyzer import ActivityAnalyzer
-                self.activity_analyzer = ActivityAnalyzer(self.file_paths)
+                from new_activity_analyzer import NewActivityAnalyzer
+                self.activity_analyzer = NewActivityAnalyzer(self.new_loader)
         return self.activity_analyzer
