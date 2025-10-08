@@ -89,9 +89,9 @@ def display_metrics(stats, activity_stats=None):
     
     with col1:
         st.metric(
-            label="👥 總參與人數",
-            value=f"{stats['total_participants']}人",
-            delta=f"女{stats['female_count']} 男{stats['male_count']}"
+            label="👥 實際參與人數",
+            value=f"{stats['active_participants']}人",
+            delta=f"報名{stats['total_registrants']}人｜女{stats['female_count']} 男{stats['male_count']}"
         )
     
     with col2:

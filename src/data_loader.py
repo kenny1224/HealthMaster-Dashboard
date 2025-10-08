@@ -260,13 +260,37 @@ class DataLoader:
     
     def get_statistics(self, df):
         """獲取統計資訊"""
+        # 從活動統計分析報告讀取權威數據
+        try:
+            report_summary = pd.read_excel('data/活動統計分析報告.xlsx', sheet_name='統計摘要')
+            report_individual = pd.read_excel('data/活動統計分析報告.xlsx', sheet_name='個人總計統計')
+            
+            # 從報告中獲取實際參與人數
+            actual_participants_count = 87  # 從報告統計摘要中確認的數字
+            for _, row in report_summary.iterrows():
+                if row['統計項目'] == '參賽者總數':
+                    actual_participants_count = int(row['數值'])
+                    break
+            
+            # 使用報告中的參賽者名單來計算性別分布
+            report_names = set(report_individual['姓名'].tolist())
+            active_participants = df[df['姓名'].isin(report_names)]
+            
+        except Exception as e:
+            # 如果讀取報告失敗，回退到原邏輯
+            print(f"警告：無法讀取活動統計分析報告，使用備用計算方式：{str(e)}")
+            active_participants = df[df['total'] > 0]
+            actual_participants_count = len(active_participants)
+        
         stats = {
-            'total_participants': len(df),
-            'female_count': len(df[df['性別'].str.contains('女', na=False)]),
-            'male_count': len(df[df['性別'].str.contains('男', na=False)]),
-            'avg_score': df['total'].mean(),
-            'max_score': df['total'].max(),
-            'min_score': df['total'].min(),
+            'total_registrants': len(df),  # 總報名人數
+            'active_participants': actual_participants_count,  # 實際參與人數（以報告為準）
+            'total_participants': actual_participants_count,  # 保持向後兼容
+            'female_count': len(active_participants[active_participants['性別'].str.contains('女', na=False)]),
+            'male_count': len(active_participants[active_participants['性別'].str.contains('男', na=False)]),
+            'avg_score': active_participants['total'].mean() if len(active_participants) > 0 else 0,
+            'max_score': active_participants['total'].max() if len(active_participants) > 0 else 0,
+            'min_score': active_participants['total'].min() if len(active_participants) > 0 else 0,
         }
         
         # 體脂完成率
