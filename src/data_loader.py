@@ -262,8 +262,8 @@ class DataLoader:
         """獲取統計資訊"""
         stats = {
             'total_participants': len(df),
-            'female_count': len(df[df['性別'] == '女']),
-            'male_count': len(df[df['性別'] == '男']),
+            'female_count': len(df[df['性別'].str.contains('女', na=False)]),
+            'male_count': len(df[df['性別'].str.contains('男', na=False)]),
             'avg_score': df['total'].mean(),
             'max_score': df['total'].max(),
             'min_score': df['total'].min(),
