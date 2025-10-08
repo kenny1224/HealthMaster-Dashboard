@@ -277,6 +277,14 @@ class NewDataProcessor:
                     dept = self.account_info.loc[participant_id, '所屬部門'] if '所屬部門' in self.account_info.columns else ''
                     participant_stats.at[idx, '所屬部門'] = dept
 
+        # 過濾掉無效資料（id為0或姓名為0的記錄）
+        participant_stats = participant_stats[
+            (participant_stats['id'] != 0) &
+            (participant_stats['id'] != '0') &
+            (participant_stats['姓名'] != 0) &
+            (participant_stats['姓名'] != '0')
+        ]
+
         self.participant_stats = participant_stats
         print(f"參加者活動統計表建立完成：{len(participant_stats)} 筆資料")
         return participant_stats
