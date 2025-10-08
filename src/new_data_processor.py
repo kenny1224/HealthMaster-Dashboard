@@ -196,16 +196,20 @@ class NewDataProcessor:
                 date_obj = datetime(2025, int(month), int(day))
                 date_str = date_obj.strftime('%Y/%m/%d')
             else:
-                # 如果沒有日期，使用期間中間日期
-                if sheet_name == '0808-0830':
+                # 如果沒有日期，根據活動名稱使用特定日期
+                if club_name == '人資講座':
+                    date_str = '2025/08/08'
+                elif sheet_name == '0808-0830':
                     date_str = '2025/08/15'
                 elif sheet_name == '0831-0921':
                     date_str = '2025/09/10'
                 else:
                     date_str = sheet_name
         except:
-            # 解析失敗時使用期間中間日期
-            if sheet_name == '0808-0830':
+            # 解析失敗時使用期間日期
+            if club_name == '人資講座':
+                date_str = '2025/08/08'
+            elif sheet_name == '0808-0830':
                 date_str = '2025/08/15'
             elif sheet_name == '0831-0921':
                 date_str = '2025/09/10'

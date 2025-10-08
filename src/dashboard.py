@@ -428,90 +428,85 @@ def display_personal_query_tab(ranking_engine, activity_analyzer):
                 
                 # 社團活動詳細列表 - 新版表格和圖表
                 st.markdown("#### 🎯 參與社團活動列表")
-                
-                # 從新架構取得該參賽者的社團活動明細
+
+                # 從活動分析器取得社團活動明細
                 try:
-                    # 載入新架構的社團活動明細
-                    import sys
-                    import os
-                    sys.path.append('src')
-                    from new_data_loader import NewDataLoader
-                    
-                    new_loader = NewDataLoader()
-                    new_loader.processor.load_all_periods_data()
-                    new_loader.processor.build_participant_activity_stats()
-                    club_details = new_loader.processor.get_club_activity_details()
-                    
-                    # 篩選該參賽者的社團活動
-                    person_club_activities = club_details[club_details['姓名'] == selected_name]
-                    
-                    if not person_club_activities.empty:
-                        # 按日期排序
-                        person_club_activities = person_club_activities.sort_values('社團活動日期')
-                        
-                        # 顯示社團活動表格
-                        st.markdown("**社團活動明細表**")
-                        display_columns = ['社團活動日期', '參加社團', '得分']
-                        st.dataframe(
-                            person_club_activities[display_columns],
-                            use_container_width=True,
-                            hide_index=True
-                        )
-                        
-                        # 建立Stacked Area Chart
-                        st.markdown("**社團活動得分趨勢圖**")
-                        
-                        # 準備圖表資料
-                        chart_data = person_club_activities.copy()
-                        chart_data['社團活動日期'] = pd.to_datetime(chart_data['社團活動日期'])
-                        chart_data = chart_data.sort_values('社團活動日期')
-                        
-                        # 計算累計得分
-                        chart_data['累計得分'] = chart_data['得分'].cumsum()
-                        
-                        # 使用plotly建立Stacked Area Chart
-                        import plotly.express as px
-                        import plotly.graph_objects as go
-                        
-                        fig = go.Figure()
-                        
-                        # 設定X軸起始日期為2025/8/8
-                        start_date = pd.to_datetime('2025-08-08')
-                        
-                        # 添加面積圖
-                        fig.add_trace(go.Scatter(
-                            x=chart_data['社團活動日期'],
-                            y=chart_data['累計得分'],
-                            mode='lines+markers',
-                            fill='tonexty',
-                            name='累計得分',
-                            hovertemplate='<b>日期:</b> %{x}<br>' +
-                                        '<b>累計得分:</b> %{y}<br>' +
-                                        '<b>參加社團:</b> %{customdata}<br>' +
-                                        '<extra></extra>',
-                            customdata=chart_data['參加社團']
-                        ))
-                        
-                        fig.update_layout(
-                            title='社團活動累計得分趨勢',
-                            xaxis_title='社團活動日期',
-                            yaxis_title='累計得分',
-                            showlegend=False,
-                            height=400,
-                            xaxis=dict(
-                                range=[start_date, chart_data['社團活動日期'].max()],
-                                type='date'
-                            )
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # 顯示統計摘要
-                        total_activities = len(person_club_activities)
-                        total_score = person_club_activities['得分'].sum()
-                        st.info(f"📊 社團活動摘要：共參加 **{total_activities}** 次活動，累計得分 **{total_score}** 分")
-                    else:
+                    # 取得社團活動明細
+                    club_details = activity_analyzer.club_details
+
+                    if club_details is None or club_details.empty:
                         st.info("暫無社團活動參與記錄")
+                    else:
+                        # 篩選該參賽者的社團活動
+                        person_club_activities = club_details[club_details['姓名'] == selected_name]
+
+                        if not person_club_activities.empty:
+                            # 按日期排序
+                            person_club_activities = person_club_activities.sort_values('社團活動日期')
+
+                            # 顯示社團活動表格
+                            st.markdown("**社團活動明細表**")
+                            display_columns = ['社團活動日期', '參加社團', '得分']
+                            st.dataframe(
+                                person_club_activities[display_columns],
+                                use_container_width=True,
+                                hide_index=True
+                            )
+
+                            # 建立Stacked Area Chart
+                            st.markdown("**社團活動得分趨勢圖**")
+
+                            # 準備圖表資料
+                            chart_data = person_club_activities.copy()
+                            chart_data['社團活動日期'] = pd.to_datetime(chart_data['社團活動日期'])
+                            chart_data = chart_data.sort_values('社團活動日期')
+
+                            # 計算累計得分
+                            chart_data['累計得分'] = chart_data['得分'].cumsum()
+
+                            # 使用plotly建立Stacked Area Chart
+                            import plotly.express as px
+                            import plotly.graph_objects as go
+
+                            fig = go.Figure()
+
+                            # 設定X軸起始日期為2025/8/8
+                            start_date = pd.to_datetime('2025-08-08')
+
+                            # 添加面積圖
+                            fig.add_trace(go.Scatter(
+                                x=chart_data['社團活動日期'],
+                                y=chart_data['累計得分'],
+                                mode='lines+markers',
+                                fill='tonexty',
+                                name='累計得分',
+                                hovertemplate='<b>日期:</b> %{x}<br>' +
+                                            '<b>累計得分:</b> %{y}<br>' +
+                                            '<b>參加社團:</b> %{customdata}<br>' +
+                                            '<extra></extra>',
+                                customdata=chart_data['參加社團']
+                            ))
+
+                            fig.update_layout(
+                                title='社團活動累計得分趨勢',
+                                xaxis_title='社團活動日期',
+                                yaxis_title='累計得分',
+                                showlegend=False,
+                                height=400,
+                                xaxis=dict(
+                                    range=[start_date, chart_data['社團活動日期'].max()],
+                                    type='date'
+                                )
+                            )
+
+                            st.plotly_chart(fig, use_container_width=True)
+
+                            # 顯示統計摘要
+                            total_activities = len(person_club_activities)
+                            total_score = person_club_activities['得分'].sum()
+                            st.info(f"📊 社團活動摘要：共參加 **{total_activities}** 次活動，累計得分 **{total_score}** 分")
+                        else:
+                            st.info("暫無社團活動參與記錄")
                         
                 except Exception as e:
                     st.error(f"載入社團活動資料時發生錯誤：{str(e)}")
