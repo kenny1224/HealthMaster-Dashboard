@@ -260,38 +260,66 @@ class DataLoader:
     
     def get_statistics(self, df):
         """獲取統計資訊"""
-        # 從活動統計分析報告讀取權威數據
-        try:
-            report_summary = pd.read_excel('data/活動統計分析報告.xlsx', sheet_name='統計摘要')
-            report_individual = pd.read_excel('data/活動統計分析報告.xlsx', sheet_name='個人總計統計')
-            
-            # 從報告中獲取實際參與人數
-            actual_participants_count = 87  # 從報告統計摘要中確認的數字
-            for _, row in report_summary.iterrows():
-                if row['統計項目'] == '參賽者總數':
-                    actual_participants_count = int(row['數值'])
-                    break
-            
-            # 使用報告中的參賽者名單來計算性別分布
-            report_names = set(report_individual['姓名'].tolist())
-            active_participants = df[df['姓名'].isin(report_names)]
-            
-        except Exception as e:
-            # 如果讀取報告失敗，回退到原邏輯
-            print(f"警告：無法讀取活動統計分析報告，使用備用計算方式：{str(e)}")
-            active_participants = df[df['total'] > 0]
-            actual_participants_count = len(active_participants)
+        # 默認使用基本邏輯計算
+        active_participants = df[df['total'] > 0] if 'total' in df.columns else df
+        actual_participants_count = len(active_participants)
         
+        # 嘗試從活動統計分析報告讀取更精確的數據
+        try:
+            import os
+            report_path = 'data/活動統計分析報告.xlsx'
+            if os.path.exists(report_path):
+                report_summary = pd.read_excel(report_path, sheet_name='統計摘要')
+                report_individual = pd.read_excel(report_path, sheet_name='個人總計統計')
+                
+                # 從報告中獲取實際參與人數
+                for _, row in report_summary.iterrows():
+                    if row['統計項目'] == '參賽者總數':
+                        actual_participants_count = int(row['數值'])
+                        break
+                
+                # 使用報告中的參賽者名單來計算性別分布
+                if '姓名' in df.columns:
+                    report_names = set(report_individual['姓名'].tolist())
+                    active_participants = df[df['姓名'].isin(report_names)]
+                    
+        except Exception as e:
+            # 如果讀取報告失敗，使用默認邏輯，不顯示錯誤給用戶
+            pass
+        
+        # 確保所有必要的統計都有默認值
         stats = {
             'total_registrants': len(df),  # 總報名人數
-            'active_participants': actual_participants_count,  # 實際參與人數（以報告為準）
+            'active_participants': actual_participants_count,  # 實際參與人數
             'total_participants': actual_participants_count,  # 保持向後兼容
-            'female_count': len(active_participants[active_participants['性別'].str.contains('女', na=False)]),
-            'male_count': len(active_participants[active_participants['性別'].str.contains('男', na=False)]),
-            'avg_score': active_participants['total'].mean() if len(active_participants) > 0 else 0,
-            'max_score': active_participants['total'].max() if len(active_participants) > 0 else 0,
-            'min_score': active_participants['total'].min() if len(active_participants) > 0 else 0,
+            'female_count': 0,  # 預設值
+            'male_count': 0,    # 預設值
+            'avg_score': 0,     # 預設值
+            'max_score': 0,     # 預設值
+            'min_score': 0,     # 預設值
         }
+        
+        # 安全地計算性別分布
+        if '性別' in df.columns and len(active_participants) > 0:
+            try:
+                stats['female_count'] = len(active_participants[active_participants['性別'].str.contains('女', na=False)])
+                stats['male_count'] = len(active_participants[active_participants['性別'].str.contains('男', na=False)])
+            except:
+                # 如果性別欄位有問題，回退到基本計算
+                gender_col = active_participants['性別']
+                stats['female_count'] = len(gender_col[gender_col == '女'])
+                stats['male_count'] = len(gender_col[gender_col == '男'])
+        
+        # 安全地計算分數統計
+        if 'total' in active_participants.columns and len(active_participants) > 0:
+            try:
+                valid_scores = active_participants['total'].dropna()
+                if len(valid_scores) > 0:
+                    stats['avg_score'] = float(valid_scores.mean())
+                    stats['max_score'] = float(valid_scores.max())
+                    stats['min_score'] = float(valid_scores.min())
+            except:
+                pass
         
         # 體脂完成率
         if '體脂是否上傳' in df.columns:
