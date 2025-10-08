@@ -774,8 +774,15 @@ def display_statistics_tab(df):
     score_bins = [0, 100, 200, 300, 400, 500, 1000]
     score_labels = ['0-100', '101-200', '201-300', '301-400', '401-500', '500+']
     df['分數區間'] = pd.cut(df['total'], bins=score_bins, labels=score_labels)
-    
-    score_dist = df.groupby(['分數區間', '性別']).size().reset_index(name='人數')
+
+    # 轉換為字串類型以避免 Categorical 排序問題
+    df['分數區間'] = df['分數區間'].astype(str)
+
+    score_dist = df.groupby(['分數區間', '性別'], observed=False).size().reset_index(name='人數')
+
+    # 手動設定分數區間的順序
+    score_dist['分數區間'] = pd.Categorical(score_dist['分數區間'], categories=score_labels, ordered=True)
+    score_dist = score_dist.sort_values('分數區間')
     
     fig3 = px.bar(
         score_dist,
