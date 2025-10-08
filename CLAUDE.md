@@ -11,8 +11,9 @@ HealthMaster is a Streamlit-based dashboard for a health competition scoring sys
 ### 3-Layer Modular Design
 
 1. **Data Layer** (`src/data_loader.py`)
-   - Handles Excel file loading from `data/20250903分數累積表.xlsx`
-   - Flexible column detection (supports column position changes)
+   - Handles Excel file loading from `data/每周分數累積.xlsx`
+   - Processes multiple worksheets: 總表, period sheets (0808-0830, 0831-0921), and 帳號整理
+   - ID-based data merging and aggregation
    - Data validation and cleaning with error handling
    - 5-minute caching mechanism for performance
 
@@ -30,8 +31,8 @@ HealthMaster is a Streamlit-based dashboard for a health competition scoring sys
 
 ### Key Design Patterns
 
-- **Flexible Schema**: Automatically detects required columns (`姓名`, `性別`, `total`) regardless of position
-- **Gender Separation**: Independent ranking systems for male/female participants
+- **ID-based Data Integration**: Uses `id` as primary key for merging period worksheets and participant data
+- **Gender Separation**: Independent ranking systems for male/female participants (removes "生理" prefix from gender field)
 - **Prize Configuration**: Hardcoded prize structure in `RankingEngine.PRIZE_CONFIG`
 - **Caching Strategy**: Uses Streamlit's `@st.cache_data` with TTL for data efficiency
 
@@ -66,41 +67,70 @@ This project uses Python/Streamlit without a traditional build system. No lintin
 ## Data Requirements
 
 ### Excel File Structure (data資料夾)
-系統載入兩個不同時間區間的Excel檔案，自動合併參賽者資料。
 
-#### 主要工作表：
-1. **分數累積** - 參賽者總分與基本資料
-2. **ALL活動數據統計(運動+飲食)--分數計算表** - 運動與飲食明細
-3. **個人bonus分** - 額外加分活動記錄
+**Primary Data Source**: `data/每周分數累積.xlsx`
 
-#### 分數累積工作表結構：
-- **A-J欄**: 參賽者基本資料
-  - E欄: `姓名` (合併時的KEY值)
-  - F欄: `性別` (生理男/生理女，顯示時自動轉為男/女)
-- **K欄**: 日常運動得分 (運動次數 × 10)
-- **L欄**: 每周飲食得分 (飲食次數 × 10)  
-- **M欄**: 額外加分得分 (額外活動次數 × 30)
-- **N欄-total前**: 社團活動得分 (有分數即表示參加)
-- **total欄**: 該期間總分
+#### Worksheets Structure:
+1. **總表** - Aggregated scores across all periods (Key: `id`)
+2. **Period Worksheets** - Individual period data (e.g., 0808-0830, 0831-0921)
+   - Key: `id`
+   - More period worksheets will be added over time
+3. **帳號整理** - Participant master data
+   - Key: `帳號(最新8/8)2`
+   - Gender field: Remove "生理" prefix when displaying (生理男 → 男, 生理女 → 女)
 
-#### ALL活動數據統計工作表結構：
-- **D欄**: `姓名` (與分數累積表E欄串接)
-- **E欄**: 飲食次數
-- **G欄**: 運動次數
+#### Period Worksheet Column Structure:
+- **L欄**: 日常運動得分 (運動次數 = 得分 ÷ 10)
+- **M欄**: 飲食得分 (飲食次數 = 得分 ÷ 10)
+- **N欄**: 個人Bonus得分 (Bonus次數 = 得分 ÷ 30)
+- **O欄 ~ total欄前**: 社團活動得分
+  - Column names contain activity name and date (e.g., "8/13 羽球社")
+  - Empty or 0 = did not participate
 
-#### 個人bonus分工作表結構：
-- **A欄**: 參賽者姓名 (出現次數 = 額外加分活動次數)
+### Score Calculation Logic:
 
-### 資料整理邏輯：
-系統以參賽者為維度整理以下資料：
-1. 日常運動: 得分與次數統計
-2. 每周飲食: 得分與次數統計  
-3. 額外加分: 得分與次數統計
-4. 社團活動: 得分與參與項目統計
+#### A. Score Conversion:
+1. **日常運動**: 日常運動得分 ÷ 10 = 日常運動次數
+2. **飲食**: 飲食得分 ÷ 10 = 飲食次數
+3. **個人Bonus**: 個人Bonus得分 ÷ 30 = 個人Bonus次數
+4. **社團活動**: Non-zero value in columns O onwards = participated
 
-### 顯示位置：
-- **個人查詢頁面**: 顯示個人詳細的四類活動統計
-- **總覽頁面**: 顯示全體參賽者的四類活動總計
+#### B. Data Processing Pipeline:
+
+**Step 1: Period Data Aggregation**
+- Merge period worksheets (0808-0830, 0831-0921, etc.)
+- Extract fields: 回合期間, 姓名, 日常運動得分, 日常運動次數, 飲食得分, 飲食次數, 個人Bonus得分, 個人Bonus次數
+
+**Step 2: Club Activity Transformation (Wide to Long)**
+- Transform club activity columns (O欄 onwards) from wide to long format
+- Parse column names to extract:
+  - **社團活動日期**: Date portion (e.g., "8/13" → "2025/08/13", default year: 2025)
+  - **參加社團**: Activity name (e.g., "羽球社", "桌球社挑戰賽")
+- Example transformations:
+  - "8/13 羽球社" → Date: "2025/08/13", Activity: "羽球社"
+  - "9/2 桌球社挑戰賽" → Date: "2025/09/02", Activity: "桌球社挑戰賽"
+- UNION all period data to create **參加社團活動明細表**
+- Fields: 回合期間, 姓名, 社團活動日期, 參加社團
+
+**Step 3: Club Activity Aggregation**
+- Count records per 姓名 → 參加社團次數
+- Sum scores → 參加社團得分
+- Join with Step 1 data using (姓名, 回合期間) as key
+
+**Final Output: 參加者活動統計表**
+- 回合期間
+- 姓名
+- 日常運動得分, 日常運動次數
+- 飲食得分, 飲食次數
+- 個人Bonus得分, 個人Bonus次數
+- 參加社團得分, 參加社團次數
+
+### Dashboard Data Source:
+**All dashboard statistics must use data from 參加者活動統計表**
+
+### Display Locations:
+- **個人查詢頁面**: Individual detailed statistics for all 4 activity types
+- **總覽頁面**: Aggregate statistics for all participants across 4 activity types
 
 ## Prize System
 
@@ -141,7 +171,10 @@ The system prioritizes resilience over strict validation:
 
 ## File Paths and Dependencies
 
-- Excel data: `data/20250903分數累積表.xlsx` (relative to project root)
+- Excel data: `data/每周分數累積.xlsx` (relative to project root)
+- Legacy files (deprecated):
+  - `data/20250903分數累積表(0808-0830).xlsx`
+  - `data/20250905分數累積表(0831-0920).xlsx`
 - Static imports: All internal dependencies use relative imports
 - External dependencies: Only uses packages in `requirements.txt`
 

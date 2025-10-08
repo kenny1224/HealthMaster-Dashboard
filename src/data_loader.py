@@ -33,39 +33,60 @@ class DataLoader:
         # 初始化活動分析器
         self.activity_analyzer = None  # 延遲初始化
         self.new_loader = None  # 新資料載入器實例
+        self.correct_loader = None  # 修正後的資料載入器實例
         
     @st.cache_data(ttl=300)  # 5分鐘快取
     def load_data(_self):
         """載入新的EXCEL檔案結構資料"""
         try:
-            # 使用新的資料載入器
-            from new_excel_data_loader import NewExcelDataLoader
-            
-            _self.new_loader = NewExcelDataLoader(_self.file_paths[0])
-            participant_stats = _self.new_loader.load_all_data()
-            
-            if participant_stats is None:
-                st.error("❌ 無法載入新Excel檔案資料")
+            # 直接載入參加者活動統計表
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            stats_path = os.path.join(project_root, 'data', '參加者活動統計表.xlsx')
+
+            # 檢查檔案是否存在，不存在則先生成
+            if not os.path.exists(stats_path):
+                print("參加者活動統計表不存在，正在生成...")
+                from new_data_processor import NewDataProcessor
+                processor = NewDataProcessor(_self.file_paths[0])
+                processor.process_all()
+
+            # 載入參加者活動統計表
+            participant_stats = pd.read_excel(stats_path)
+
+            if participant_stats is None or participant_stats.empty:
+                st.error("❌ 無法載入參加者活動統計表")
                 return None
-            
+
             # 轉換為適合儀表板的格式
-            merged_df = _self._convert_to_dashboard_format(participant_stats)
-            
+            merged_df = _self._convert_to_dashboard_format_new(participant_stats)
+
             if merged_df is None:
                 st.error("❌ 資料格式轉換失敗")
                 return None
-            
+
             print(f"載入完成：{len(merged_df)} 位參賽者")
-            
-            # 載入詳細活動分析
-            print("正在進行詳細活動分析...")
-            activity_analyzer = _self.get_activity_analyzer()
-            activity_analyzer.load_detailed_data()
-            
+
+            # 儲存processor以供活動分析使用
+            from new_data_processor import NewDataProcessor
+            _self.new_processor = NewDataProcessor(_self.file_paths[0])
+            _self.new_processor.load_account_info()
+            _self.new_processor.load_period_data('0808-0830')
+            _self.new_processor.load_period_data('0831-0921')
+            # 重建社團活動明細
+            all_club_details = []
+            for sheet_name, df in _self.new_processor.period_data.items():
+                club_df = _self.new_processor.transform_club_activities(df, sheet_name)
+                all_club_details.append(club_df)
+            _self.new_processor.club_details = pd.concat(all_club_details, ignore_index=True)
+
             return merged_df
-            
+
         except Exception as e:
-            st.error(f"❌ 合併檔案時發生錯誤：{str(e)}")
+            st.error(f"❌ 載入資料時發生錯誤：{str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def _convert_to_dashboard_format(self, participant_stats):
@@ -154,6 +175,92 @@ class DataLoader:
             
         except Exception as e:
             print(f"格式轉換失敗：{str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _convert_to_dashboard_format_new(self, participant_stats):
+        """將新的參加者活動統計表轉換為儀表板格式"""
+        try:
+            # participant_stats 已經是正確格式的 DataFrame
+            # 欄位: id, 姓名, 性別, 所屬部門, 運動總得分, 運動總次數, 飲食總得分, 飲食總次數,
+            #      Bonus總得分, Bonus總次數, 社團總得分, 社團總次數, total, 期間1分數, 期間2分數
+
+            dashboard_data = []
+
+            for _, row in participant_stats.iterrows():
+                dashboard_row = {
+                    '姓名': row['姓名'],
+                    '性別': row['性別'],
+                    '所屬部門': row['所屬部門'],
+                    'total': row['total'],
+                    '日常運動總分': row['運動總得分'],
+                    '飲食總分': row['飲食總得分'],
+                    'Bonus總分': row['Bonus總得分'],
+                    '社團活動總分': row['社團總得分'],
+                    '日常運動總次數': row['運動總次數'],
+                    '飲食總次數': row['飲食總次數'],
+                    'Bonus總次數': row['Bonus總次數'],
+                    '社團活動總次數': row['社團總次數'],
+                    # 期間分解
+                    'total_期間1': row['期間1分數'],
+                    'total_期間2': row['期間2分數']
+                }
+                dashboard_data.append(dashboard_row)
+
+            # 轉換為DataFrame
+            df = pd.DataFrame(dashboard_data)
+
+            # 填充缺失值
+            df = df.fillna(0)
+
+            print(f"新格式轉換完成：{len(df)} 位參賽者")
+            return df
+
+        except Exception as e:
+            print(f"新格式轉換失敗：{str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def _convert_to_dashboard_format_correct(self, participant_stats):
+        """將修正後的參加者活動統計表轉換為儀表板格式"""
+        try:
+            # participant_stats 已經是正確格式的 DataFrame
+            # 直接使用並重新組織為儀表板需要的格式
+            dashboard_data = []
+            
+            for _, row in participant_stats.iterrows():
+                dashboard_row = {
+                    '姓名': row['姓名'],
+                    '性別': row['性別'],
+                    '所屬部門': row['所屬部門'],
+                    'total': row['total'],
+                    '日常運動總分': row['運動總得分'],
+                    '飲食總分': row['飲食總得分'],
+                    'Bonus總分': row['Bonus總得分'],
+                    '社團活動總分': row['社團總得分'],
+                    '日常運動總次數': row['運動總次數'],
+                    '飲食總次數': row['飲食總次數'],
+                    'Bonus總次數': row['Bonus總次數'],
+                    '社團活動總次數': row['社團總次數'],
+                    # 期間分解
+                    'total_期間1': row['期間1分數'],
+                    'total_期間2': row['期間2分數']
+                }
+                dashboard_data.append(dashboard_row)
+            
+            # 轉換為DataFrame
+            df = pd.DataFrame(dashboard_data)
+            
+            # 填充缺失值
+            df = df.fillna(0)
+            
+            print(f"修正格式轉換完成：{len(df)} 位參賽者")
+            return df
+            
+        except Exception as e:
+            print(f"修正格式轉換失敗：{str(e)}")
             import traceback
             traceback.print_exc()
             return None
@@ -427,7 +534,23 @@ class DataLoader:
             try:
                 # 使用新的活動分析器
                 from new_activity_analyzer import NewActivityAnalyzer
-                self.activity_analyzer = NewActivityAnalyzer(self.new_loader)
+                # 使用新的processor
+                processor_to_use = self.new_processor if hasattr(self, 'new_processor') and self.new_processor else None
+                if processor_to_use is None:
+                    # 如果沒有processor，建立一個新的
+                    from new_data_processor import NewDataProcessor
+                    processor_to_use = NewDataProcessor(self.file_paths[0])
+                    processor_to_use.load_account_info()
+                    processor_to_use.load_period_data('0808-0830')
+                    processor_to_use.load_period_data('0831-0921')
+                    # 建立社團活動明細
+                    all_club_details = []
+                    for sheet_name, df in processor_to_use.period_data.items():
+                        club_df = processor_to_use.transform_club_activities(df, sheet_name)
+                        all_club_details.append(club_df)
+                    processor_to_use.club_details = pd.concat(all_club_details, ignore_index=True)
+
+                self.activity_analyzer = NewActivityAnalyzer(processor_to_use)
             except ImportError:
                 # 如果相對導入失敗，嘗試絕對導入
                 import sys
@@ -435,5 +558,19 @@ class DataLoader:
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 sys.path.insert(0, current_dir)
                 from new_activity_analyzer import NewActivityAnalyzer
-                self.activity_analyzer = NewActivityAnalyzer(self.new_loader)
+                from new_data_processor import NewDataProcessor
+
+                processor_to_use = self.new_processor if hasattr(self, 'new_processor') and self.new_processor else None
+                if processor_to_use is None:
+                    processor_to_use = NewDataProcessor(self.file_paths[0])
+                    processor_to_use.load_account_info()
+                    processor_to_use.load_period_data('0808-0830')
+                    processor_to_use.load_period_data('0831-0921')
+                    all_club_details = []
+                    for sheet_name, df in processor_to_use.period_data.items():
+                        club_df = processor_to_use.transform_club_activities(df, sheet_name)
+                        all_club_details.append(club_df)
+                    processor_to_use.club_details = pd.concat(all_club_details, ignore_index=True)
+
+                self.activity_analyzer = NewActivityAnalyzer(processor_to_use)
         return self.activity_analyzer

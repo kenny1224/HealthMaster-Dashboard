@@ -11,18 +11,69 @@ from collections import defaultdict
 
 class NewActivityAnalyzer:
     """新活動分析器"""
-    
-    def __init__(self, new_loader):
-        self.new_loader = new_loader
+
+    def __init__(self, processor):
+        """
+        Args:
+            processor: NewDataProcessor 實例
+        """
+        self.processor = processor
         self.participant_stats = None
         self.club_details = None
-        
+
     def load_detailed_data(self):
         """載入詳細資料"""
-        if self.new_loader:
-            self.participant_stats = self.new_loader.participant_activity_stats
-            self.club_details = self.new_loader.get_club_activity_details()
-            print(f"活動分析器載入完成，分析 {len(self.participant_stats) if self.participant_stats is not None else 0} 位參賽者")
+        if self.processor:
+            # 從processor取得參加者活動統計表
+            import os
+            import pandas as pd
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            stats_path = os.path.join(project_root, 'data', '參加者活動統計表.xlsx')
+
+            # 載入參加者活動統計表
+            stats_df = pd.read_excel(stats_path)
+
+            # 轉換為期間明細格式以配合原有邏輯
+            period_data = []
+            for _, row in stats_df.iterrows():
+                # 期間1資料
+                if row['期間1分數'] > 0:
+                    period_row = {
+                        'id': row['id'],
+                        '姓名': row['姓名'],
+                        '回合期間': '0808-0830',
+                        '日常運動得分': row['運動總得分'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '日常運動次數': row['運動總次數'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '飲食得分': row['飲食總得分'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '飲食次數': row['飲食總次數'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '個人Bonus得分': row['Bonus總得分'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '個人Bonus次數': row['Bonus總次數'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '參加社團得分': row['社團總得分'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                        '參加社團次數': row['社團總次數'] * (row['期間1分數'] / row['total']) if row['total'] > 0 else 0,
+                    }
+                    period_data.append(period_row)
+
+                # 期間2資料
+                if row['期間2分數'] > 0:
+                    period_row = {
+                        'id': row['id'],
+                        '姓名': row['姓名'],
+                        '回合期間': '0831-0921',
+                        '日常運動得分': row['運動總得分'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '日常運動次數': row['運動總次數'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '飲食得分': row['飲食總得分'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '飲食次數': row['飲食總次數'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '個人Bonus得分': row['Bonus總得分'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '個人Bonus次數': row['Bonus總次數'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '參加社團得分': row['社團總得分'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                        '參加社團次數': row['社團總次數'] * (row['期間2分數'] / row['total']) if row['total'] > 0 else 0,
+                    }
+                    period_data.append(period_row)
+
+            self.participant_stats = pd.DataFrame(period_data)
+            self.club_details = self.processor.club_details
+            print(f"活動分析器載入完成，分析 {len(self.participant_stats) if self.participant_stats is not None else 0} 筆期間資料")
     
     def get_overall_statistics(self):
         """取得整體活動統計"""
@@ -93,11 +144,11 @@ class NewActivityAnalyzer:
         
         # 取得社團活動詳細列表
         club_activities = []
-        for _, row in person_data.iterrows():
-            if row['社團活動明細']:
-                club_activities.extend(row['社團活動明細'])
-        
-        club_activity_list = [f"{activity['參加社團']}({activity['得分']}分)" 
+        if self.club_details is not None:
+            person_club = self.club_details[self.club_details['姓名'] == name]
+            club_activities = person_club['參加社團'].tolist() if not person_club.empty else []
+
+        club_activity_list = [f"{activity}" if isinstance(activity, str) else str(activity) 
                              for activity in club_activities]
         
         return {
