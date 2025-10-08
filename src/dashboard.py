@@ -824,6 +824,7 @@ def main():
     
     # 獲取活動分析器和活動統計
     activity_analyzer = loader.get_activity_analyzer()
+    activity_analyzer.load_detailed_data()  # 必須先載入資料
     activity_stats = activity_analyzer.get_overall_statistics()
     
     # 顯示關鍵指標
