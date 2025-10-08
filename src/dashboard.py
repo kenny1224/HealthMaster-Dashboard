@@ -86,31 +86,31 @@ def display_metrics(stats, activity_stats=None):
     """顯示關鍵指標"""
     # 第一行：基本參與數據
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.metric(
             label="👥 實際參與人數",
             value=f"{stats.get('active_participants', stats.get('total_participants', 0))}人",
             delta=f"報名{stats.get('total_registrants', 0)}人｜女{stats.get('female_count', 0)} 男{stats.get('male_count', 0)}"
         )
-    
+
     with col2:
-        body_fat_rate = stats.get('body_fat_completion_rate', 0)
         st.metric(
-            label="⚖️ 體脂完成率",
-            value=f"{body_fat_rate*100:.0f}%"
+            label="🏆 最高分數",
+            value=f"{stats.get('max_score', 0):.0f}分"
         )
-    
+
     with col3:
         st.metric(
             label="📊 平均分數",
             value=f"{stats.get('avg_score', 0):.0f}分"
         )
-    
+
     with col4:
+        min_score = stats.get('min_score', 0)
         st.metric(
-            label="🏆 最高分數",
-            value=f"{stats.get('max_score', 0):.0f}分"
+            label="📉 最低分數",
+            value=f"{min_score:.0f}分" if min_score > 0 else "0分"
         )
     
     # 第二行：四大活動類別統計 (7.1-7.4)
