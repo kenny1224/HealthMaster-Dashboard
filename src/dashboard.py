@@ -519,11 +519,11 @@ def display_activity_intro_tab():
         # 讀取活動簡介檔案 - 嘗試多個可能的路徑
         current_dir = os.path.dirname(os.path.abspath(__file__))
         possible_paths = [
-            os.path.join(current_dir, '活動簡介.txt'),  # 同目錄
-            os.path.join(os.path.dirname(current_dir), '活動簡介.txt'),  # 上層目錄（src的話）
-            '活動簡介.txt'  # 相對路徑
+            os.path.join(current_dir, '活動簡介.md'),  # 同目錄
+            os.path.join(os.path.dirname(current_dir), '活動簡介.md'),  # 上層目錄（src的話）
+            '活動簡介.md'  # 相對路徑
         ]
-        
+
         content = None
         for intro_path in possible_paths:
             try:
@@ -532,10 +532,10 @@ def display_activity_intro_tab():
                 break
             except FileNotFoundError:
                 continue
-        
+
         if content:
-            # 顯示內容
-            st.markdown(content)
+            # 顯示 Markdown 內容
+            st.markdown(content, unsafe_allow_html=True)
         else:
             raise FileNotFoundError("活動簡介檔案未找到")
         

@@ -61,15 +61,20 @@
 
 ### Windows 更新步驟
 
-1. 編輯 `data\20250903分數累積表.xlsx`
+1. 編輯 `data\每周分數累積.xlsx`
 2. 儲存檔案
-3. 雙擊 `scripts\update_data.bat`
-4. 等待完成
+3. 執行 `python src/new_data_processor.py` (產生參加者活動統計表)
+4. 雙擊 `scripts\update_data.bat`
+5. 等待完成
 
 ### 手動更新步驟
 
 ```bash
-git add data/20250903分數累積表.xlsx
+# 1. 產生統計表
+python src/new_data_processor.py
+
+# 2. 上傳到 GitHub
+git add data/每周分數累積.xlsx data/參加者活動統計表.xlsx
 git commit -m "更新分數 - 2025/09/03"
 git push origin main
 ```
@@ -187,17 +192,19 @@ https://healthmaster-dashboard-xxxxx.streamlit.app
 ### 錯誤排查
 
 **儀表板無法載入**
-- 檢查 GitHub 上的資料檔案是否存在
+- 檢查 GitHub 上的資料檔案是否存在 (每周分數累積.xlsx 與 參加者活動統計表.xlsx)
 - 查看 Streamlit Cloud 的 logs
 
 **資料更新未生效**
-- 確認 GitHub 已更新
+- 確認已執行 new_data_processor.py 產生統計表
+- 確認 GitHub 已更新兩個檔案
 - 等待 2-3 分鐘
 - 清除瀏覽器快取
 
 **排名異常**
-- 檢查 Excel 的 `total` 欄位
+- 檢查 Excel 每周分數累積.xlsx 的各期間工作表
 - 確認 `性別` 欄位正確（生理女/生理男）
+- 確認沒有 id=0 或 name=0 的無效資料
 
 ---
 

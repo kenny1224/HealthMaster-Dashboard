@@ -79,16 +79,21 @@ git push -u origin main
 
 1. **編輯 Excel**
    ```
-   編輯 data\20250903分數累積表.xlsx
+   編輯 data\每周分數累積.xlsx
    新增今日分數 → 儲存
    ```
 
-2. **一鍵更新**
+2. **產生統計表**
+   ```
+   python src/new_data_processor.py
+   ```
+
+3. **一鍵更新**
    ```
    雙擊 scripts\update_data.bat
    ```
 
-3. **等待生效**
+4. **等待生效**
    ```
    1-2 分鐘後自動更新
    ```
@@ -139,7 +144,8 @@ pip install --upgrade -r requirements.txt
 
 ### 找不到資料檔案
 ```
-確認路徑：data/20250903分數累積表.xlsx
+確認路徑：data/每周分數累積.xlsx
+確認已產生：data/參加者活動統計表.xlsx
 ```
 
 ### GitHub 推送失敗
